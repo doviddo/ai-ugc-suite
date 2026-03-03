@@ -695,7 +695,21 @@
         currentMode = data.mode;
 
         // Populate review panel
-        document.getElementById('voiceoverEditor').value = data.creative_data.voiceover_script || '';
+        if (data.mode === 'clipper') {
+          let previewText = "✅ ИИ успешно создал сценарии для вариантов клипов!\n\n";
+          if (data.creative_data.clips) {
+            data.creative_data.clips.forEach((c, i) => {
+              previewText += `🎬 Вариант ${i + 1} [${c.theme}]:\n${c.voiceover_script}\n\n`;
+            });
+          } else {
+            previewText += "[Сценарии готовы, просто нажмите Generate]";
+          }
+          document.getElementById('voiceoverEditor').value = previewText;
+          document.getElementById('voiceoverEditor').readOnly = true; // Not editable for 10 clips at once yet
+        } else {
+          document.getElementById('voiceoverEditor').value = data.creative_data.voiceover_script || '';
+          document.getElementById('voiceoverEditor').readOnly = false;
+        }
 
         const badge = document.getElementById('modeBadge');
         if (data.mode === 'creative') {
@@ -728,7 +742,7 @@
     async function generate() {
       const script = document.getElementById('voiceoverEditor').value.trim();
       const voice = document.getElementById('voiceSelect').value;
-      if (!script) { alert('Script cannot be empty.'); return; }
+      if (!script && currentMode !== 'clipper') { alert('Script cannot be empty.'); return; }
 
       showPanel('result');
       setStep(3);
