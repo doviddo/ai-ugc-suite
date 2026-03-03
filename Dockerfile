@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
-# Install FFmpeg and ffprobe
+# Install FFmpeg and ffprobe along with Roboto font for subtitles
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    fonts-roboto \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
