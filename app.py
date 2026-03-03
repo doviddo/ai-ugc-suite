@@ -360,32 +360,33 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
 def process_job(job_id, mode, file_path, product_context, voiceover_script=None, video_prompt=None, voice=None):
     """Background thread to process the full video generation pipeline."""
     try:
-        jobs[job_id]['status'] = 'generating_audio'
-        # 1. Generate Voice
-        audio_raw_path = f"temp/{job_id}_audio.raw"
-        audio_data = generate_tts(voiceover_script, voice)
-        with open(audio_raw_path, 'wb') as f:
-            f.write(audio_data)
+        if mode != 'clipper':
+            jobs[job_id]['status'] = 'generating_audio'
+            # 1. Generate Voice
+            audio_raw_path = f"temp/{job_id}_audio.raw"
+            audio_data = generate_tts(voiceover_script, voice)
+            with open(audio_raw_path, 'wb') as f:
+                f.write(audio_data)
 
-        # 2. Convert Voice to WAV right away to get duration (crucial for Clipper)
-        wav_path = audio_raw_path.replace('.raw', '.wav')
-        
-        converted = False
-        for fmt in ['s16le', 's16be']:
-            try:
-                res = subprocess.run([
-                    'ffmpeg', '-y', '-f', fmt, '-ar', '24000', '-ac', '1',
-                    '-i', audio_raw_path, wav_path
-                ], capture_output=True, timeout=60)
-                if res.returncode == 0:
-                    converted = True
-                    break
-            except Exception:
-                continue
-        if not converted:
-            raise RuntimeError('Failed to convert TTS audio to WAV')
+            # 2. Convert Voice to WAV right away to get duration
+            wav_path = audio_raw_path.replace('.raw', '.wav')
             
-        audio_duration = get_video_duration(wav_path)
+            converted = False
+            for fmt in ['s16le', 's16be']:
+                try:
+                    res = subprocess.run([
+                        'ffmpeg', '-y', '-f', fmt, '-ar', '24000', '-ac', '1',
+                        '-i', audio_raw_path, wav_path
+                    ], capture_output=True, timeout=60)
+                    if res.returncode == 0:
+                        converted = True
+                        break
+                except Exception:
+                    continue
+            if not converted:
+                raise RuntimeError('Failed to convert TTS audio to WAV')
+                
+            audio_duration = get_video_duration(wav_path)
 
         if mode == 'creative':
             jobs[job_id]['status'] = 'generating_video'
