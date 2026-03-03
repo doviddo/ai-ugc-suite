@@ -211,19 +211,34 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
         speed_ratio = max(0.5, min(2.0, speed_ratio))  # clamp to safe range
         audio_filter = ['-filter:a', f'atempo={speed_ratio:.4f}']
 
-    cmd = [
-        'ffmpeg', '-y',
-        '-i', video_path,
-        '-i', wav_path,
-        '-c:v', 'copy',
-        '-c:a', 'aac',          # explicitly encode audio as AAC
-        '-b:a', '128k',
-        '-map', '0:v:0',
-        '-map', '1:a:0',
-        *audio_filter,
-        '-shortest',
-        output_path
-    ]
+    # If video is shorter than audio, loop it; if longer, trim to audio length
+    if audio_duration > 0 and video_duration < audio_duration:
+        # Loop video to cover full audio duration
+        loop_count = int(audio_duration / video_duration) + 2
+        cmd = [
+            'ffmpeg', '-y',
+            '-stream_loop', str(loop_count), '-i', video_path,
+            '-i', wav_path,
+            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-shortest',
+            output_path
+        ]
+    else:
+        # Video is long enough — just merge and trim to audio length
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-i', wav_path,
+            '-c:v', 'copy',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-shortest',
+            output_path
+        ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f'FFmpeg merge error: {result.stderr[-500:]}')
