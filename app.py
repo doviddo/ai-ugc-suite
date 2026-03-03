@@ -179,32 +179,45 @@ def generate_veo3_video(video_prompt):
 
 def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
     """Merge audio and video with FFmpeg, adjusting audio speed to fit video duration."""
-    # Convert RAW PCM to WAV first
     wav_path = audio_raw_path.replace('.raw', '.wav')
-    subprocess.run([
-        'ffmpeg', '-y',
-        '-f', 's16be', '-ar', '24000', '-ac', '1',
-        '-i', audio_raw_path,
-        wav_path
-    ], check=True, capture_output=True, timeout=60)
+
+    # Try s16le first (little-endian), fallback to s16be (big-endian)
+    # Gemini TTS returns L16 PCM - format can vary
+    converted = False
+    for fmt in ['s16le', 's16be']:
+        try:
+            result = subprocess.run([
+                'ffmpeg', '-y',
+                '-f', fmt, '-ar', '24000', '-ac', '1',
+                '-i', audio_raw_path,
+                wav_path
+            ], capture_output=True, timeout=60)
+            if result.returncode == 0:
+                converted = True
+                break
+        except Exception:
+            continue
+
+    if not converted:
+        raise RuntimeError('Failed to convert TTS audio to WAV')
 
     # Get audio duration
     audio_duration = get_video_duration(wav_path)
 
     # Calculate speed ratio to fit audio into video duration
+    audio_filter = []
     if audio_duration > 0 and abs(audio_duration - video_duration) > 0.5:
         speed_ratio = audio_duration / video_duration
         speed_ratio = max(0.5, min(2.0, speed_ratio))  # clamp to safe range
-        atempo_filter = f"atempo={speed_ratio:.4f}"
-        audio_filter = ['-filter:a', atempo_filter]
-    else:
-        audio_filter = []
+        audio_filter = ['-filter:a', f'atempo={speed_ratio:.4f}']
 
     cmd = [
         'ffmpeg', '-y',
         '-i', video_path,
         '-i', wav_path,
         '-c:v', 'copy',
+        '-c:a', 'aac',          # explicitly encode audio as AAC
+        '-b:a', '128k',
         '-map', '0:v:0',
         '-map', '1:a:0',
         *audio_filter,
@@ -213,7 +226,7 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
-        raise RuntimeError(f"FFmpeg error: {result.stderr}")
+        raise RuntimeError(f'FFmpeg merge error: {result.stderr[-500:]}')
     return output_path
 
 
