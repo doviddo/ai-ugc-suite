@@ -457,9 +457,9 @@
       </div>
 
       <div class="card">
-        <label>Product Context & Marketing Info</label>
-        <textarea id="productContext" rows="5"
-          placeholder="Example:&#10;Product: Nike Air Max 270&#10;Key Benefits: Ultra lightweight, Air cushioning for all-day comfort, stylish streetwear design&#10;Target Audience: Young athletes, urban fashion lovers&#10;USP: The most comfortable sneaker for city exploration"></textarea>
+        <label>Product Context & Marketing Info (Optional)</label>
+        <textarea id="productContext" rows="3"
+          placeholder="Optional: Tell AI what to focus on (e.g., 'Focus on the durability. Target audience: Athletes.')"></textarea>
       </div>
 
       <div class="card">
@@ -643,7 +643,6 @@
 
       if (currentMode === 'creative' && !hasFile) { alert('Please upload a photo first.'); return; }
       if (currentMode !== 'creative' && !hasFile && !hasUrl) { alert('Please upload a file or paste a video link.'); return; }
-      if (!context) { alert('Please provide product context.'); return; }
 
       document.getElementById('analyzeBtn').disabled = true;
       document.getElementById('analyzeStatus').classList.remove('hidden');

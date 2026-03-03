@@ -489,9 +489,6 @@ def analyze():
     if not file and not video_url:
         return jsonify({'error': 'Please provide either a file or a video URL'}), 400
 
-    if not product_context:
-        return jsonify({'error': 'Product context is required'}), 400
-
     job_id = str(uuid.uuid4())
     
     if video_url:
