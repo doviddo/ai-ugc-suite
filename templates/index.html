@@ -523,12 +523,13 @@
 
       <div class="card hidden" id="resultCard">
         <div class="status-msg success" style="margin-bottom:1rem;">
-          <span>✅</span><span>Your UGC video is ready!</span>
+          <span>✅</span><span>Your UGC content is ready!</span>
         </div>
-        <video id="resultVideo" controls></video>
-        <a id="downloadLink" class="btn btn-primary" style="text-decoration:none;margin-top:0.5rem;">
-          ⬇️ Download Video
-        </a>
+
+        <div id="clipsContainer" style="display:flex; flex-direction:column; gap:2rem; margin-bottom: 1.5rem;">
+          <!-- Generated videos injected here dynamically -->
+        </div>
+
         <button class="btn" style="background:var(--surface2);color:var(--muted);width:100%;margin-top:0.75rem;"
           onclick="resetApp()">
           🔄 Create Another Video
@@ -700,7 +701,7 @@
 
         if (data.status === 'done') {
           clearInterval(pollInterval);
-          showResult(data.output_file);
+          showResult(data);
         } else if (data.status === 'error') {
           clearInterval(pollInterval);
           showResultError(data.error || 'Unknown error');
@@ -717,15 +718,54 @@
       document.getElementById('progressStatusText').textContent = label;
     }
 
-    function showResult(filename) {
+    function showResult(data) {
       document.getElementById('progressCard').classList.add('hidden');
       const resultCard = document.getElementById('resultCard');
       resultCard.classList.remove('hidden');
 
-      const videoUrl = `/download/${filename}`;
-      document.getElementById('resultVideo').src = videoUrl;
-      document.getElementById('downloadLink').href = videoUrl;
-      document.getElementById('downloadLink').download = filename;
+      const container = document.getElementById('clipsContainer');
+      container.innerHTML = '';
+
+      const files = data.output_files && data.output_files.length > 0 ? data.output_files : [data.output_file];
+
+      files.forEach((filename, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.padding = "1rem";
+        wrapper.style.background = "var(--surface2)";
+        wrapper.style.borderRadius = "var(--radius)";
+        wrapper.style.border = "1px solid var(--border)";
+
+        if (data.output_files) {
+          const theme = data.creative_data && data.creative_data.clips && data.creative_data.clips[i]?.theme;
+          const title = document.createElement('h4');
+          title.style.color = "var(--accent)";
+          title.style.marginBottom = "0.75rem";
+          title.style.fontSize = "1.1rem";
+          title.textContent = `🎬 Clip ${i + 1}${theme ? ': ' + theme : ''}`;
+          wrapper.appendChild(title);
+        }
+
+        const videoUrl = `/download/${filename}`;
+        const video = document.createElement('video');
+        video.src = videoUrl;
+        video.controls = true;
+        video.style.width = "100%";
+        video.style.borderRadius = "10px";
+        video.style.marginBottom = "1rem";
+
+        const dlink = document.createElement('a');
+        dlink.href = videoUrl;
+        dlink.download = filename;
+        dlink.className = "btn btn-primary";
+        dlink.style.textDecoration = "none";
+        dlink.style.width = "100%";
+        dlink.textContent = "⬇️ Download Clip";
+
+        wrapper.appendChild(video);
+        wrapper.appendChild(dlink);
+        container.appendChild(wrapper);
+      });
+
       setStep(3, true);
     }
 

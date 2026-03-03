@@ -100,22 +100,29 @@ REQUIREMENTS:
         prompt = f"""You are a professional UGC video editor and marketer for the German market.
 
 Analyze this long video footage and the product information below.
-Create a fast-paced, 20-25 second UGC promotional video by cutting the most dynamic highlight moments.
+Your task is to create a complete content plan of 10 DISTINCT, fast-paced, 20-25 second UGC promotional videos from this single footage. 
+Each of the 10 videos should focus on a slightly different angle, feature, or emotional hook based on the product context.
 
 PRODUCT CONTEXT / MARKETING INFO:
 {product_context}
 
-REQUIREMENTS:
-1. Select 4 to 6 of the most dynamic, visually appealing segments from the video. Focus on product in action, close-ups. Total combined duration of segments should be 20-25 seconds.
-2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
+REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
+1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video. Total combined duration of segments for one clip should be 20-25 seconds.
+2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
-4. Return ONLY a valid JSON object matching exactly this structure:
+4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips:
 {{
-  "cut_segments": [
-    {{"start_time": 1.5, "end_time": 4.0}}
-  ],
-  "voiceover_script": "full german script",
-  "subtitles": ["phrase 1", "phrase 2"]
+  "clips": [
+    {{
+      "theme": "Brief description of the angle (e.g. Unboxing, Durability test)",
+      "cut_segments": [
+        {{"start_time": 1.5, "end_time": 4.0}},
+        {{"start_time": 12.0, "end_time": 15.5}}
+      ],
+      "voiceover_script": "full german script",
+      "subtitles": ["phrase 1", "phrase 2"]
+    }}
+  ]
 }}"""
 
     else:
@@ -352,64 +359,88 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path))
             
         elif mode == 'clipper':
-            jobs[job_id]['status'] = 'processing_video'
-            
-            # Step A: Collect Segments and Create SRT
             creative_data = jobs[job_id]['creative_data']
-            subtitles_list = creative_data.get('subtitles', [])
-            srt_path = f"temp/{job_id}.srt"
-            generate_srt(subtitles_list, audio_duration, srt_path)
+            clips = creative_data.get('clips', [])
+            if not clips:
+                # Fallback if AI didn't return 'clips' array properly
+                clips = [creative_data]
             
-            # Escape path for FFmpeg on Linux/Windows inside container
-            abs_srt_path = os.path.abspath(srt_path).replace("\\", "/").replace(":", "\\:")
+            jobs[job_id]['output_files'] = []
             
-            segments = creative_data.get('cut_segments', [])
-            if not segments:
-                segments = [{'start_time': 0, 'end_time': 20}] # fallback
+            for clip_idx, clip_data in enumerate(clips):
+                jobs[job_id]['status'] = f'processing_clip_{clip_idx + 1}_of_{len(clips)}'
                 
-            # Step B: Build FFmpeg Filter Complex for slicing & concatenating & subtitles
-            filter_parts = []
-            concat_inputs = []
-            
-            for i, seg in enumerate(segments):
-                start = float(seg.get('start_time', 0))
-                end = float(seg.get('end_time', 5))
-                filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}]")
-                concat_inputs.append(f"[v{i}]")
+                # A. Generate Audio for this specific clip
+                clip_voice_script = clip_data.get('voiceover_script', voiceover_script)
+                audio_raw_path = f"temp/{job_id}_clip{clip_idx}_audio.raw"
+                audio_data = generate_tts(clip_voice_script, voice)
+                with open(audio_raw_path, 'wb') as f:
+                    f.write(audio_data)
                 
-            concat_str = "".join(concat_inputs)
-            n_segments = len(segments)
-            
-            # Concat the slices
-            filter_parts.append(f"{concat_str}concat=n={n_segments}:v=1:a=0[vcat]")
-            
-            # Apply subtitles on the concatenated video
-            # Using absolute path for subtitles, yellow text with black stroke like TikTok/Reels style
-            filter_parts.append(f"[vcat]subtitles={abs_srt_path}:force_style='FontSize=24,PrimaryColour=&H00FFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=2,Shadow=1,MarginV=40,Bold=1'[vout]")
-            
-            filter_complex = ";".join(filter_parts)
-            
-            jobs[job_id]['status'] = 'merging'
-            output_path = f"output/{job_id}_final.mp4"
-            cmd = [
-                'ffmpeg', '-y',
-                '-i', file_path,
-                '-i', wav_path,
-                '-filter_complex', filter_complex,
-                '-map', '[vout]',
-                '-map', '1:a:0',
-                '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-                '-c:a', 'aac', '-b:a', '128k',
-                '-shortest',
-                output_path
-            ]
-            
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            if res.returncode != 0:
-                raise RuntimeError(f"Clipper FFmpeg error: {res.stderr[-500:]}")
+                # Convert to WAV
+                wav_path = audio_raw_path.replace('.raw', '.wav')
+                for fmt in ['s16le', 's16be']:
+                    try:
+                        res = subprocess.run([
+                            'ffmpeg', '-y', '-f', fmt, '-ar', '24000', '-ac', '1',
+                            '-i', audio_raw_path, wav_path
+                        ], capture_output=True, timeout=60)
+                        if res.returncode == 0: break
+                    except Exception: continue
+                
+                audio_duration = get_video_duration(wav_path)
+
+                # B. Generate Subtitles
+                subtitles_list = clip_data.get('subtitles', [])
+                srt_path = f"temp/{job_id}_clip{clip_idx}.srt"
+                generate_srt(subtitles_list, audio_duration, srt_path)
+                abs_srt_path = os.path.abspath(srt_path).replace("\\", "/").replace(":", "\\:")
+                
+                # C. Prepare FFmpeg Filter Complex for Segments
+                segments = clip_data.get('cut_segments', [{'start_time': 0, 'end_time': 20}])
+                filter_parts = []
+                concat_inputs = []
+                
+                for i, seg in enumerate(segments):
+                    start = float(seg.get('start_time', 0))
+                    end = float(seg.get('end_time', 5))
+                    # Fallback if start >= end to avoid ffmpeg crash
+                    if start >= end: end = start + 3 
+                    filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}]")
+                    concat_inputs.append(f"[v{i}]")
+                    
+                concat_str = "".join(concat_inputs)
+                n_segments = len(segments)
+                filter_parts.append(f"{concat_str}concat=n={n_segments}:v=1:a=0[vcat]")
+                filter_parts.append(f"[vcat]subtitles={abs_srt_path}:force_style='FontSize=24,PrimaryColour=&H00FFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=2,Shadow=1,MarginV=40,Bold=1'[vout]")
+                
+                filter_complex = ";".join(filter_parts)
+                
+                output_path = f"output/{job_id}_clip{clip_idx + 1}.mp4"
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-i', file_path,
+                    '-i', wav_path,
+                    '-filter_complex', filter_complex,
+                    '-map', '[vout]',
+                    '-map', '1:a:0',
+                    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+                    '-c:a', 'aac', '-b:a', '128k',
+                    '-shortest',
+                    output_path
+                ]
+                
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if res.returncode != 0:
+                    print(f"Clip {clip_idx} FFmpeg error: {res.stderr[-500:]}")
+                    continue # Try to generate the next clips even if one fails
+                
+                jobs[job_id]['output_files'].append(f"{job_id}_clip{clip_idx + 1}.mp4")
 
         jobs[job_id]['status'] = 'done'
-        jobs[job_id]['output_file'] = f"{job_id}_final.mp4"
+        if mode != 'clipper':
+            jobs[job_id]['output_file'] = f"{job_id}_final.mp4"
+
 
     except Exception as e:
         jobs[job_id]['status'] = 'error'
