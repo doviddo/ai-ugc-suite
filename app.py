@@ -72,24 +72,26 @@ def get_mime_type(filepath):
     return mime_map.get(ext, 'application/octet-stream')
 
 
-def analyze_with_gemini(file_path, product_context, mode):
+def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=None):
     """Send file to Gemini for creative concept generation using official SDK."""
     mime_type = get_mime_type(file_path)
     is_video = mime_type.startswith('video')
 
     if is_video:
+        duration_hint = f"{int(video_duration_sec)} seconds" if video_duration_sec else "15 seconds"
         prompt = f"""You are a professional UGC video marketing expert for the German market.
 
 Analyze this video footage and the product information below.
-Create a compelling 15-second German voiceover script for this UGC-style content.
+Create a German voiceover script that fits EXACTLY {duration_hint} of video.
 
 PRODUCT CONTEXT / MARKETING INFO:
 {product_context}
 
 REQUIREMENTS:
 - The video shows someone interacting with the product. Write a voiceover that matches what's happening visually.
+- The script MUST be readable in exactly {duration_hint} at a natural speaking pace.
 - Return ONLY a valid JSON object with exactly two fields:
-  1) "voiceover_script" - enthusiastic German voiceover, informal "du"-style, 15 seconds when spoken, first person, as if a male reviewer speaks to camera
+  1) "voiceover_script" - enthusiastic German voiceover, informal "du"-style, first person, as if a male reviewer speaks to camera. Length: {duration_hint} when spoken at normal pace.
   2) "video_description" - brief English description of what happens in the video (for our records)
 - voiceover_script MUST be in German only.
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
@@ -200,11 +202,10 @@ def generate_veo3_video(video_prompt):
 
 
 def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
-    """Merge audio and video with FFmpeg, adjusting audio speed to fit video duration."""
+    """Merge audio and video with FFmpeg. Audio fits the video via -shortest."""
     wav_path = audio_raw_path.replace('.raw', '.wav')
 
     # Try s16le first (little-endian), fallback to s16be (big-endian)
-    # Gemini TTS returns L16 PCM - format can vary
     converted = False
     for fmt in ['s16le', 's16be']:
         try:
@@ -223,44 +224,18 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
     if not converted:
         raise RuntimeError('Failed to convert TTS audio to WAV')
 
-    # Get audio duration
-    audio_duration = get_video_duration(wav_path)
-
-    # Calculate speed ratio to fit audio into video duration
-    audio_filter = []
-    if audio_duration > 0 and abs(audio_duration - video_duration) > 0.5:
-        speed_ratio = audio_duration / video_duration
-        speed_ratio = max(0.5, min(2.0, speed_ratio))  # clamp to safe range
-        audio_filter = ['-filter:a', f'atempo={speed_ratio:.4f}']
-
-    # If video is shorter than audio, loop it; if longer, trim to audio length
-    if audio_duration > 0 and video_duration < audio_duration:
-        # Loop video to cover full audio duration
-        loop_count = int(audio_duration / video_duration) + 2
-        cmd = [
-            'ffmpeg', '-y',
-            '-stream_loop', str(loop_count), '-i', video_path,
-            '-i', wav_path,
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-            '-c:a', 'aac', '-b:a', '128k',
-            '-map', '0:v:0',
-            '-map', '1:a:0',
-            '-shortest',
-            output_path
-        ]
-    else:
-        # Video is long enough — just merge and trim to audio length
-        cmd = [
-            'ffmpeg', '-y',
-            '-i', video_path,
-            '-i', wav_path,
-            '-c:v', 'copy',
-            '-c:a', 'aac', '-b:a', '128k',
-            '-map', '0:v:0',
-            '-map', '1:a:0',
-            '-shortest',
-            output_path
-        ]
+    # Simple merge: trim to shortest (video or audio)
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', video_path,
+        '-i', wav_path,
+        '-c:v', 'copy',
+        '-c:a', 'aac', '-b:a', '128k',
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+        '-shortest',
+        output_path
+    ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     if result.returncode != 0:
         raise RuntimeError(f'FFmpeg merge error: {result.stderr[-500:]}')
@@ -353,8 +328,13 @@ def analyze():
     save_path = f"temp/{job_id}_{filename}"
     file.save(save_path)
 
+    # For dubbing mode — measure video duration before sending to Gemini
+    video_duration_sec = None
+    if mode == 'dubbing':
+        video_duration_sec = get_video_duration(save_path)
+
     try:
-        creative_data = analyze_with_gemini(save_path, product_context, mode)
+        creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec)
     except Exception as e:
         os.remove(save_path)
         return jsonify({'error': f'Gemini analysis failed: {str(e)}'}), 500
