@@ -106,9 +106,9 @@ PRODUCT CONTEXT / MARKETING INFO:
 
 REQUIREMENTS:
 - Return ONLY a valid JSON object with exactly two fields:
-  1) "video_prompt" - a detailed 15-second cinematic description in English for Google Veo 3. Focus on PRODUCT SHOTS and HANDS only — show hands unboxing, holding, demonstrating the product against a clean background. NO full person, NO face. Cinematic close-ups, smooth camera movements, premium lighting. Silent, no speech.
-  2) "voiceover_script" - a catchy 15-second enthusiastic script ENTIRELY IN GERMAN language, first person, informal "du"-style, as if a male reviewer is speaking directly to camera. Use the product marketing info to highlight key benefits. Make it feel authentic and exciting.
-- voiceover_script MUST be in German only."""
+  1) "video_prompt" - a detailed cinematic description in English for Google Veo 3 (max 8 seconds). Focus on PRODUCT SHOTS and HANDS only — show hands unboxing, holding, demonstrating the product against a clean background. NO full person, NO face. Cinematic close-ups, smooth camera movements, premium lighting. Silent, no speech.
+  2) "voiceover_script" - an enthusiastic script ENTIRELY IN GERMAN, exactly 8 seconds when spoken at normal pace, first person, informal "du"-style. Highlight the key benefit directly. Short, punchy, memorable.
+- voiceover_script MUST be in German only. Keep it SHORT — 8 seconds max."""
 
     with open(file_path, 'rb') as f:
         file_bytes = f.read()
