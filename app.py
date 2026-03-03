@@ -123,7 +123,12 @@ REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
 1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video. Total combined duration of segments for one clip should be 20-25 seconds.
 2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
-4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips. IMPORTANT: Ensure all double quotes inside strings are properly escaped (e.g. \\"):
+4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips.
+CRITICAL JSON RULES:
+- DO NOT use double quotes (") inside any string values. Use single quotes (') instead.
+- DO NOT use actual line breaks inside string values. Use \\n instead.
+- The output MUST be strictly valid JSON without any markdown formatting.
+
 {{
   "clips": [
     {{
@@ -132,7 +137,7 @@ REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
         {{"start_time": 1.5, "end_time": 4.0}},
         {{"start_time": 12.0, "end_time": 15.5}}
       ],
-      "voiceover_script": "full german script",
+      "voiceover_script": "full german script without quotes",
       "subtitles": ["phrase 1", "phrase 2"]
     }}
   ]
