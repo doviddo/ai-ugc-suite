@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI UGC Marketing Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #141720;
+      --surface2: #1c2030;
+      --border: #2a2f45;
+      --accent: #7c6af7;
+      --accent2: #5eead4;
+      --danger: #f87171;
+      --success: #34d399;
+      --text: #e2e8f0;
+      --muted: #6b7280;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 860px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 2.5rem; }
+    header .logo {
+      display: inline-flex; align-items: center; gap: 0.6rem;
+      font-size: 1.8rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    header p { color: var(--muted); margin-top: 0.5rem; font-size: 0.95rem; }
+
+    .mode-tabs {
+      display: flex; gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.4rem;
+      margin-bottom: 1.5rem;
+    }
+    .mode-tab {
+      flex: 1; padding: 0.75rem; border: none;
+      border-radius: 10px; cursor: pointer;
+      font-family: inherit; font-size: 0.875rem; font-weight: 500;
+      background: transparent; color: var(--muted);
+      transition: all 0.2s;
+    }
+    .mode-tab.active {
+      background: linear-gradient(135deg, var(--accent), #5b50d6);
+      color: #fff;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(124, 106, 247, 0.05);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .drop-zone p { color: var(--muted); font-size: 0.9rem; }
+    .drop-zone .file-info { color: var(--accent2); font-size: 0.875rem; margin-top: 0.5rem; font-weight: 500; }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      resize: vertical;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--accent); }
+
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      border: none; border-radius: 10px;
+      font-family: inherit; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #5b50d6);
+      color: #fff; width: 100%;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(124,106,247,0.4); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-success {
+      background: linear-gradient(135deg, #059669, #34d399);
+      color: #fff; width: 100%;
+    }
+    .btn-success:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(52,211,153,0.4); }
+
+    /* Step indicator */
+    .steps {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .step {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.8rem; color: var(--muted); font-weight: 500;
+    }
+    .step .dot {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; font-weight: 700;
+      background: var(--surface2); border: 2px solid var(--border);
+      transition: all 0.3s;
+    }
+    .step.active .dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .step.done .dot { background: var(--success); border-color: var(--success); color: #fff; }
+    .step-line { flex: 1; height: 1px; background: var(--border); }
+
+    /* Progress bar */
+    .progress-wrap { margin: 1rem 0; }
+    .progress-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; display: flex; justify-content: space-between; }
+    .progress-bar {
+      height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.5s ease;
+    }
+
+    /* Script editor */
+    .script-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .lang-badge {
+      display: inline-block;
+      background: rgba(124,106,247,0.2);
+      color: var(--accent);
+      font-size: 0.7rem; font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Status messages */
+    .status-msg {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+    }
+    .status-msg.info { background: rgba(124,106,247,0.1); border: 1px solid rgba(124,106,247,0.3); }
+    .status-msg.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--danger); }
+    .status-msg.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--success); }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Video preview */
+    video {
+      width: 100%; border-radius: 10px;
+      background: #000; margin-bottom: 1rem;
+    }
+
+    /* Hidden */
+    .hidden { display: none !important; }
+
+    /* Mode badge */
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.3rem 0.8rem;
+      border-radius: 99px;
+      margin-bottom: 1rem;
+    }
+    .mode-badge.creative { background: rgba(124,106,247,0.15); color: var(--accent); }
+    .mode-badge.dubbing { background: rgba(94,234,212,0.15); color: var(--accent2); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">🎬 AI UGC Suite</div>
+    <p>Generate professional German-language UGC video content with AI</p>
+  </header>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="dot">1</div>
+      <span>Upload & Analyze</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step2">
+      <div class="dot">2</div>
+      <span>Review Script</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step3">
+      <div class="dot">3</div>
+      <span>Generate</span>
+    </div>
+  </div>
+
+  <!-- STEP 1: Upload -->
+  <div id="panel-upload">
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('creative')" id="tab-creative">📸 Photo → Full Video</button>
+      <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
+    </div>
+
+    <div class="card">
+      <label>Upload File</label>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept="image/*,video/*" onchange="onFileSelect(this)" />
+        <div class="icon" id="dropIcon">📁</div>
+        <p id="dropText">Drop your photo or video here, or click to browse</p>
+        <div class="file-info hidden" id="fileInfo"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Product Context & Marketing Info</label>
+      <textarea id="productContext" rows="5" placeholder="Example:&#10;Product: Nike Air Max 270&#10;Key Benefits: Ultra lightweight, Air cushioning for all-day comfort, stylish streetwear design&#10;Target Audience: Young athletes, urban fashion lovers&#10;USP: The most comfortable sneaker for city exploration"></textarea>
+    </div>
+
+    <div class="card">
+      <label>Voice</label>
+      <select id="voiceSelect">
+        <option value="Puck">Puck (Male, energetic)</option>
+        <option value="Charon">Charon (Male, deep)</option>
+        <option value="Aoede">Aoede (Female, warm)</option>
+        <option value="Leda">Leda (Female, friendly)</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
+      <span>🔍 Analyze & Generate Script</span>
+    </button>
+
+    <div class="status-msg info hidden" id="analyzeStatus" style="margin-top:1rem;">
+      <div class="spinner"></div>
+      <span id="analyzeStatusText">Analyzing with Gemini AI...</span>
+    </div>
+    <div class="status-msg error hidden" id="analyzeError" style="margin-top:1rem;">
+      <span>⚠️</span><span id="analyzeErrorText"></span>
+    </div>
+  </div>
+
+  <!-- STEP 2: Review Script -->
+  <div id="panel-review" class="hidden">
+    <div class="card">
+      <div class="mode-badge" id="modeBadge"></div>
+      <label>📝 German Voiceover Script (Editable)</label>
+      <div class="script-box">
+        <div class="lang-badge">🇩🇪 DEUTSCH</div>
+        <textarea id="voiceoverEditor" rows="6" placeholder="German voiceover script..."></textarea>
+      </div>
+    </div>
+
+    <div class="card hidden" id="videPromptCard">
+      <label>🎬 Video Generation Prompt (Veo 3)</label>
+      <div class="script-box" style="color:var(--muted); font-size:0.875rem;" id="videoPromptPreview"></div>
+    </div>
+
+    <button class="btn btn-success" onclick="generate()">
+      ✨ Confirm & Generate Video
+    </button>
+    <button class="btn" style="background:var(--surface2);color:var(--muted);width:100%;margin-top:0.75rem;" onclick="goBack()">
+      ← Back
+    </button>
+  </div>
+
+  <!-- STEP 3: Progress / Result -->
+  <div id="panel-result" class="hidden">
+    <div class="card" id="progressCard">
+      <label>Generation Progress</label>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="progressLabel">Starting...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="status-msg info" id="progressStatus">
+        <div class="spinner"></div>
+        <span id="progressStatusText">Initializing pipeline...</span>
+      </div>
+    </div>
+
+    <div class="card hidden" id="resultCard">
+      <div class="status-msg success" style="margin-bottom:1rem;">
+        <span>✅</span><span>Your UGC video is ready!</span>
+      </div>
+      <video id="resultVideo" controls></video>
+      <a id="downloadLink" class="btn btn-primary" style="text-decoration:none;margin-top:0.5rem;">
+        ⬇️ Download Video
+      </a>
+      <button class="btn" style="background:var(--surface2);color:var(--muted);width:100%;margin-top:0.75rem;" onclick="resetApp()">
+        🔄 Create Another Video
+      </button>
+    </div>
+
+    <div class="status-msg error hidden" id="resultError">
+      <span>⚠️</span><span id="resultErrorText">An error occurred.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentJobId = null;
+  let currentMode = 'creative';
+  let pollInterval = null;
+
+  const steps = {
+    STATUS_LABELS: {
+      starting: { text: 'Starting pipeline...', pct: 5 },
+      generating_audio: { text: 'Generating German voiceover (TTS)...', pct: 25 },
+      generating_video: { text: 'Generating video with Veo 3 (may take 2-4 min)...', pct: 50 },
+      processing_video: { text: 'Processing uploaded video...', pct: 40 },
+      merging: { text: 'Merging audio and video with FFmpeg...', pct: 85 },
+      done: { text: 'Done!', pct: 100 },
+    }
+  };
+
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('tab-creative').classList.toggle('active', mode === 'creative');
+    document.getElementById('tab-dubbing').classList.toggle('active', mode === 'dubbing');
+    document.getElementById('fileInput').accept = mode === 'creative' ? 'image/*' : 'video/*';
+    const dropText = document.getElementById('dropText');
+    dropText.textContent = mode === 'creative'
+      ? 'Drop your product photo here (JPG, PNG, WEBP)'
+      : 'Drop your video file here (MP4, MOV, AVI, WEBM)';
+    document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : '🎬';
+    clearFileInput();
+  }
+
+  function clearFileInput() {
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileInfo').classList.add('hidden');
+  }
+
+  function onFileSelect(input) {
+    if (!input.files.length) return;
+    const file = input.files[0];
+    const info = document.getElementById('fileInfo');
+    info.textContent = `✓ ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+    info.classList.remove('hidden');
+  }
+
+  // Drag & drop
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = document.getElementById('fileInput');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      onFileSelect(input);
+    }
+  });
+
+  async function analyze() {
+    const fileInput = document.getElementById('fileInput');
+    const context = document.getElementById('productContext').value.trim();
+
+    if (!fileInput.files.length) { alert('Please upload a file first.'); return; }
+    if (!context) { alert('Please provide product context.'); return; }
+
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('analyzeStatus').classList.remove('hidden');
+    document.getElementById('analyzeError').classList.add('hidden');
+    document.getElementById('analyzeStatusText').textContent = 'Analyzing with Gemini AI...';
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('product_context', context);
+
+    try {
+      const resp = await fetch('/analyze', { method: 'POST', body: formData });
+      const data = await resp.json();
+
+      if (!resp.ok) throw new Error(data.error || 'Analysis failed');
+
+      currentJobId = data.job_id;
+      currentMode = data.mode;
+
+      // Populate review panel
+      document.getElementById('voiceoverEditor').value = data.creative_data.voiceover_script || '';
+
+      const badge = document.getElementById('modeBadge');
+      if (data.mode === 'creative') {
+        badge.textContent = '📸 Mode: Full AI Generation (Photo → Veo 3 → TTS)';
+        badge.className = 'mode-badge creative';
+        document.getElementById('videPromptCard').classList.remove('hidden');
+        document.getElementById('videoPromptPreview').textContent = data.creative_data.video_prompt || '';
+      } else {
+        badge.textContent = '🎬 Mode: Smart Dubbing (Video → TTS)';
+        badge.className = 'mode-badge dubbing';
+        document.getElementById('videPromptCard').classList.add('hidden');
+      }
+
+      showPanel('review');
+      setStep(2);
+
+    } catch (err) {
+      document.getElementById('analyzeError').classList.remove('hidden');
+      document.getElementById('analyzeErrorText').textContent = err.message;
+    } finally {
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('analyzeStatus').classList.add('hidden');
+    }
+  }
+
+  async function generate() {
+    const script = document.getElementById('voiceoverEditor').value.trim();
+    const voice = document.getElementById('voiceSelect').value;
+    if (!script) { alert('Script cannot be empty.'); return; }
+
+    showPanel('result');
+    setStep(3);
+
+    try {
+      const resp = await fetch('/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: currentJobId, voiceover_script: script, voice })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Failed to start generation');
+
+      pollInterval = setInterval(pollStatus, 4000);
+    } catch (err) {
+      showResultError(err.message);
+    }
+  }
+
+  async function pollStatus() {
+    if (!currentJobId) return;
+    try {
+      const resp = await fetch(`/status/${currentJobId}`);
+      const data = await resp.json();
+
+      const info = steps.STATUS_LABELS[data.status] || { text: data.status, pct: 10 };
+      updateProgress(info.text, info.pct);
+
+      if (data.status === 'done') {
+        clearInterval(pollInterval);
+        showResult(data.output_file);
+      } else if (data.status === 'error') {
+        clearInterval(pollInterval);
+        showResultError(data.error || 'Unknown error');
+      }
+    } catch (e) {
+      // Network hiccup, try again
+    }
+  }
+
+  function updateProgress(label, pct) {
+    document.getElementById('progressLabel').textContent = label;
+    document.getElementById('progressPct').textContent = `${pct}%`;
+    document.getElementById('progressFill').style.width = `${pct}%`;
+    document.getElementById('progressStatusText').textContent = label;
+  }
+
+  function showResult(filename) {
+    document.getElementById('progressCard').classList.add('hidden');
+    const resultCard = document.getElementById('resultCard');
+    resultCard.classList.remove('hidden');
+
+    const videoUrl = `/download/${filename}`;
+    document.getElementById('resultVideo').src = videoUrl;
+    document.getElementById('downloadLink').href = videoUrl;
+    document.getElementById('downloadLink').download = filename;
+    setStep(3, true);
+  }
+
+  function showResultError(msg) {
+    document.getElementById('progressCard').classList.add('hidden');
+    const errEl = document.getElementById('resultError');
+    errEl.classList.remove('hidden');
+    document.getElementById('resultErrorText').textContent = msg;
+  }
+
+  function showPanel(name) {
+    ['upload', 'review', 'result'].forEach(p => {
+      document.getElementById(`panel-${p}`).classList.toggle('hidden', p !== name);
+    });
+  }
+
+  function setStep(active, isDone = false) {
+    [1, 2, 3].forEach(i => {
+      const el = document.getElementById(`step${i}`);
+      el.classList.remove('active', 'done');
+      if (i < active) el.classList.add('done');
+      else if (i === active) el.classList.add(isDone ? 'done' : 'active');
+    });
+  }
+
+  function goBack() {
+    showPanel('upload');
+    setStep(1);
+  }
+
+  function resetApp() {
+    currentJobId = null;
+    if (pollInterval) clearInterval(pollInterval);
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileInfo').classList.add('hidden');
+    document.getElementById('resultCard').classList.add('hidden');
+    document.getElementById('resultError').classList.add('hidden');
+    document.getElementById('progressCard').classList.remove('hidden');
+    updateProgress('Starting...', 0);
+    showPanel('upload');
+    setStep(1);
+  }
+</script>
+</body>
+</html>

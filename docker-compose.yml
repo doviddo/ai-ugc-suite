@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  ai-ugc:
+    build: .
+    container_name: ai-ugc-suite
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./output:/app/output
