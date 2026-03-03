@@ -104,8 +104,8 @@ PRODUCT CONTEXT / MARKETING INFO:
 
 REQUIREMENTS:
 - Return ONLY a valid JSON object with exactly two fields:
-  1) "video_prompt" - a detailed 15-second cinematic description in English for Google Veo 3. Feature a MALE reviewer (mid-20s, casual sporty style) unboxing and demonstrating the product. The person MUST NOT speak directly to camera (no lip movement for speech). He reacts, shows, holds, inspects the product. Pure visual UGC content. No background music, no speech, silent action only.
-  2) "voiceover_script" - a catchy 15-second enthusiastic script ENTIRELY IN GERMAN language, first person, informal "du"-style, as if the male reviewer is speaking directly to camera. Use the product marketing info to highlight key benefits. Make it feel authentic and exciting.
+  1) "video_prompt" - a detailed 15-second cinematic description in English for Google Veo 3. Focus on PRODUCT SHOTS and HANDS only — show hands unboxing, holding, demonstrating the product against a clean background. NO full person, NO face. Cinematic close-ups, smooth camera movements, premium lighting. Silent, no speech.
+  2) "voiceover_script" - a catchy 15-second enthusiastic script ENTIRELY IN GERMAN language, first person, informal "du"-style, as if a male reviewer is speaking directly to camera. Use the product marketing info to highlight key benefits. Make it feel authentic and exciting.
 - voiceover_script MUST be in German only."""
 
     with open(file_path, 'rb') as f:
@@ -172,10 +172,26 @@ def generate_veo3_video(video_prompt):
             # Check for API-level error
             if 'error' in poll_data:
                 raise RuntimeError(f"Veo 3 API error: {poll_data['error']}")
-            try:
-                video_uri = poll_data['response']['generateVideoResponse']['generatedSamples'][0]['video']['uri']
-            except (KeyError, IndexError, TypeError) as e:
-                raise RuntimeError(f"Veo 3 unexpected response: {e}. Full: {poll_data}")
+
+            veo_response = poll_data.get('response', {}).get('generateVideoResponse', {})
+
+            # Content safety filter rejection
+            if 'raiFilteredReason' in veo_response:
+                reason = veo_response['raiFilteredReason']
+                raise RuntimeError(
+                    f"Veo 3 rejected the prompt due to content safety filter: {reason}. "
+                    f"Try simplifying the video description (avoid 'person', 'reviewer', 'human')."
+                )
+
+            # Try generatedSamples (v1) or generatedVideos (newer API versions)
+            samples = veo_response.get('generatedSamples') or veo_response.get('generatedVideos')
+            if not samples:
+                raise RuntimeError(f"Veo 3 returned no video samples. Full response: {poll_data}")
+
+            video_uri = samples[0].get('video', {}).get('uri') or samples[0].get('uri')
+            if not video_uri:
+                raise RuntimeError(f"Veo 3 video URI not found in response: {samples}")
+
             # Download video
             video_url = f"{video_uri}&key={VEO_API_KEY}"
             video_resp = requests.get(video_url, timeout=120)
