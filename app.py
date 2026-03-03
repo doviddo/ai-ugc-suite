@@ -23,12 +23,11 @@ VEO_API_KEY = os.getenv('VEO_API_KEY')
 TTS_API_KEY = os.getenv('TTS_API_KEY')
 TTS_VOICE = os.getenv('TTS_VOICE', 'Puck')
 
-ANALYSIS_MODEL = 'gemini-3-flash-preview'
-TTS_MODEL = 'gemini-3-flash-preview'
+ANALYSIS_MODEL = 'gemini-2.5-flash'
+TTS_MODEL = 'gemini-2.5-flash-preview-tts'
 
-# Initialize google-genai clients
+# Initialize google-genai client for analysis
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-tts_client = genai.Client(api_key=TTS_API_KEY)
 
 ALLOWED_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_VIDEO_EXT = {'mp4', 'mov', 'avi', 'webm'}
@@ -126,23 +125,31 @@ REQUIREMENTS:
 
 
 def generate_tts(voiceover_script, voice_name=None):
-    """Generate TTS audio from German script using official SDK."""
+    """Generate TTS audio from German script via HTTP (TTS requires specific model endpoint)."""
     voice = voice_name or TTS_VOICE
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{TTS_MODEL}:generateContent?key={TTS_API_KEY}"
 
-    response = tts_client.models.generate_content(
-        model=TTS_MODEL,
-        contents=voiceover_script,
-        config=types.GenerateContentConfig(
-            response_modalities=['AUDIO'],
-            speech_config=types.SpeechConfig(
-                voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)
-                )
-            )
-        )
-    )
+    body = {
+        "contents": [{"parts": [{"text": voiceover_script}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {"voiceName": voice}
+                }
+            }
+        }
+    }
 
-    audio_b64 = response.candidates[0].content.parts[0].inline_data.data
+    response = requests.post(url, json=body, timeout=120)
+    response.raise_for_status()
+
+    data = response.json()
+    try:
+        audio_b64 = data['candidates'][0]['content']['parts'][0]['inlineData']['data']
+    except (KeyError, IndexError, TypeError) as e:
+        raise RuntimeError(f"TTS response missing audio data: {e}. Response: {data}")
+
     return base64.b64decode(audio_b64)
 
 
