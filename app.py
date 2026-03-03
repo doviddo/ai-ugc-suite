@@ -35,6 +35,18 @@ ALLOWED_VIDEO_EXT = {'mp4', 'mov', 'avi', 'webm'}
 
 os.makedirs('temp', exist_ok=True)
 os.makedirs('output', exist_ok=True)
+os.makedirs('assets', exist_ok=True)
+
+BG_MUSIC_PATH = 'assets/bg_music.mp3'
+if not os.path.exists(BG_MUSIC_PATH):
+    print("Downloading default background music...")
+    try:
+        # A reliable public domain test track, can be replaced by user later
+        resp = requests.get("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", timeout=60)
+        with open(BG_MUSIC_PATH, 'wb') as f:
+            f.write(resp.content)
+    except Exception as e:
+        print(f"Failed to download bg music: {e}")
 
 # In-memory job store
 jobs = {}
@@ -452,14 +464,27 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 
                 filter_complex = ";".join(filter_parts)
                 
+                # Audio mixing: Voice (1.0) + Looped BG Music (0.1)
+                audio_filter = "[1:a]volume=1.0[v_aud];[2:a]volume=0.1[bg_aud];[v_aud][bg_aud]amix=inputs=2:duration=first:dropout_transition=0[aout]"
+                filter_complex += f";{audio_filter}"
+                
                 output_path = f"output/{job_id}_clip{clip_idx + 1}.mp4"
+                
+                bg_music_args = []
+                if os.path.exists(BG_MUSIC_PATH):
+                    bg_music_args = ['-stream_loop', '-1', '-i', BG_MUSIC_PATH]
+                else:
+                    # Fallback if bg music didn't download
+                    bg_music_args = ['-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono']
+                
                 cmd = [
                     'ffmpeg', '-y',
                     '-i', file_path,
-                    '-i', wav_path,
+                    '-i', wav_path
+                ] + bg_music_args + [
                     '-filter_complex', filter_complex,
                     '-map', '[vout]',
-                    '-map', '1:a:0',
+                    '-map', '[aout]',
                     '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
                     '-c:a', 'aac', '-b:a', '128k',
                     '-shortest',
