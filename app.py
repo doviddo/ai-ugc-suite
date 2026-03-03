@@ -142,18 +142,42 @@ REQUIREMENTS:
   2) "voiceover_script" - an enthusiastic script ENTIRELY IN GERMAN, exactly 8 seconds when spoken at normal pace, first person, informal "du"-style. Highlight the key benefit directly. Short, punchy, memorable.
 - voiceover_script MUST be in German only. Keep it SHORT — 8 seconds max."""
 
-    with open(file_path, 'rb') as f:
-        file_bytes = f.read()
-
-    file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+    if is_video:
+        # For large videos, we MUST use the File API to upload rather than inline memory payload
+        uploaded_file = gemini_client.files.upload(file=file_path)
+        
+        # Wait for the file to be processed by Gemini backend
+        while True:
+            state = str(uploaded_file.state)
+            if "PROCESSING" in state:
+                time.sleep(5)
+                uploaded_file = gemini_client.files.get(name=uploaded_file.name)
+            else:
+                break
+                
+        if "FAILED" in str(uploaded_file.state):
+            raise RuntimeError("Gemini failed to process the video on their end.")
+            
+        media_content = uploaded_file
+    else:
+        with open(file_path, 'rb') as f:
+            file_bytes = f.read()
+        media_content = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
 
     response = gemini_client.models.generate_content(
         model=ANALYSIS_MODEL,
-        contents=[prompt, file_part],
+        contents=[prompt, media_content],
         config=types.GenerateContentConfig(
             response_mime_type='application/json'
         )
     )
+
+    # Cleanup the file from Google servers to save quota
+    if is_video:
+        try:
+            gemini_client.files.delete(name=uploaded_file.name)
+        except Exception:
+            pass
 
     return json.loads(response.text)
 
