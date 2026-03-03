@@ -173,6 +173,35 @@
       border-color: var(--accent);
     }
 
+    input[type="url"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.1rem;
+      text-align: center;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    input[type="url"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
+    }
+
+    .or-divider {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 1rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
     select {
       width: 100%;
       background: var(--surface2);
@@ -441,11 +470,9 @@
       <div class="card">
         <label>Upload File OR Paste Link</label>
 
-        <div id="urlInputContainer" class="hidden mb-4">
-          <input type="url" id="videoUrlInput"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:border-accent outline-none transition"
-            placeholder="Paste YouTube, Google Drive, or MP4 link here...">
-          <div class="text-xs text-gray-400 mt-2 text-center">OR</div>
+        <div id="urlInputContainer" class="hidden" style="margin-bottom: 1.5rem;">
+          <input type="url" id="videoUrlInput" placeholder="Paste YouTube, Google Drive, or MP4 link here...">
+          <div class="or-divider">OR</div>
         </div>
 
         <div class="drop-zone" id="dropZone">
