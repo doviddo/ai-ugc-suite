@@ -464,6 +464,14 @@
         </select>
       </div>
 
+      <div class="card" id="aspectRatioCard">
+        <label>Video Format (Aspect Ratio)</label>
+        <select id="aspectRatioSelect">
+          <option value="vertical">📱 Vertical (9:16) - TikTok / Reels / Shorts</option>
+          <option value="horizontal">📺 Horizontal (16:9) - YouTube / Feed</option>
+        </select>
+      </div>
+
       <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
         <span>🔍 Analyze & Generate Script</span>
       </button>
@@ -626,6 +634,7 @@
       formData.append('file', fileInput.files[0]);
       formData.append('product_context', context);
       formData.append('mode', currentMode);
+      formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
 
       try {
         const resp = await fetch('/analyze', { method: 'POST', body: formData });

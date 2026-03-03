@@ -412,7 +412,18 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 concat_str = "".join(concat_inputs)
                 n_segments = len(segments)
                 filter_parts.append(f"{concat_str}concat=n={n_segments}:v=1:a=0[vcat]")
-                filter_parts.append(f"[vcat]subtitles={abs_srt_path}:force_style='FontSize=24,PrimaryColour=&H00FFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=2,Shadow=1,MarginV=40,Bold=1'[vout]")
+                
+                # Apply scaling/cropping based on aspect ratio
+                aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
+                if aspect_ratio == 'horizontal':
+                    scale_filter = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+                else:
+                    scale_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
+                filter_parts.append(f"[vcat]{scale_filter}[vscaled]")
+                
+                # Apply subtitles on the scaled video
+                # Using absolute path for subtitles, yellow text with black stroke like TikTok/Reels style
+                filter_parts.append(f"[vscaled]subtitles={abs_srt_path}:force_style='FontSize=24,PrimaryColour=&H00FFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=2,Shadow=1,MarginV=40,Bold=1'[vout]")
                 
                 filter_complex = ";".join(filter_parts)
                 
@@ -474,6 +485,8 @@ def analyze():
     product_context = request.form.get('product_context', '').strip()
     mode = request.form.get('mode', '').strip()  # Mode must come from frontend!
 
+    aspect_ratio = request.form.get('aspect_ratio', 'vertical').strip()
+
     if not product_context:
         return jsonify({'error': 'Product context is required'}), 400
 
@@ -499,6 +512,7 @@ def analyze():
     jobs[job_id] = {
         'status': 'pending_confirmation',
         'mode': mode,
+        'aspect_ratio': aspect_ratio,
         'file_path': save_path,
         'creative_data': creative_data,
         'product_context': product_context
