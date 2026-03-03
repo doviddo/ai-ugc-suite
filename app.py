@@ -169,7 +169,13 @@ def generate_veo3_video(video_prompt):
         poll_resp = requests.get(poll_url, timeout=30)
         poll_data = poll_resp.json()
         if poll_data.get('done'):
-            video_uri = poll_data['response']['generateVideoResponse']['generatedSamples'][0]['video']['uri']
+            # Check for API-level error
+            if 'error' in poll_data:
+                raise RuntimeError(f"Veo 3 API error: {poll_data['error']}")
+            try:
+                video_uri = poll_data['response']['generateVideoResponse']['generatedSamples'][0]['video']['uri']
+            except (KeyError, IndexError, TypeError) as e:
+                raise RuntimeError(f"Veo 3 unexpected response: {e}. Full: {poll_data}")
             # Download video
             video_url = f"{video_uri}&key={VEO_API_KEY}"
             video_resp = requests.get(video_url, timeout=120)
