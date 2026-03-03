@@ -11,11 +11,12 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+import yt_dlp
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB max upload
+app.config['MAX_CONTENT_LENGTH'] = 2000 * 1024 * 1024  # 2GB max upload
 app.config['UPLOAD_FOLDER'] = 'temp'
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -478,25 +479,39 @@ def index():
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """Step 1: Upload file + context, get Gemini creative concept."""
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-
-    file = request.files['file']
     product_context = request.form.get('product_context', '').strip()
     mode = request.form.get('mode', '').strip()  # Mode must come from frontend!
-
     aspect_ratio = request.form.get('aspect_ratio', 'vertical').strip()
+    video_url = request.form.get('video_url', '').strip()
+
+    file = request.files.get('file')
+
+    if not file and not video_url:
+        return jsonify({'error': 'Please provide either a file or a video URL'}), 400
 
     if not product_context:
         return jsonify({'error': 'Product context is required'}), 400
 
-    filename = secure_filename(file.filename)
-    if not filename:
-        return jsonify({'error': 'Invalid filename'}), 400
-
     job_id = str(uuid.uuid4())
-    save_path = f"temp/{job_id}_{filename}"
-    file.save(save_path)
+    
+    if video_url:
+        save_path = f"temp/{job_id}_downloaded.mp4"
+        ydl_opts = {
+            'outtmpl': save_path,
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'noplaylist': True,
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_url])
+        except Exception as e:
+            return jsonify({'error': f'Failed to download video from URL: {str(e)}'}), 400
+    else:
+        filename = secure_filename(file.filename)
+        if not filename:
+            return jsonify({'error': 'Invalid filename'}), 400
+        save_path = f"temp/{job_id}_{filename}"
+        file.save(save_path)
 
     # For video modes — measure duration
     video_duration_sec = None

@@ -439,7 +439,15 @@
       </div>
 
       <div class="card">
-        <label>Upload File</label>
+        <label>Upload File OR Paste Link</label>
+
+        <div id="urlInputContainer" class="hidden mb-4">
+          <input type="url" id="videoUrlInput"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:border-accent outline-none transition"
+            placeholder="Paste YouTube, Google Drive, or MP4 link here...">
+          <div class="text-xs text-gray-400 mt-2 text-center">OR</div>
+        </div>
+
         <div class="drop-zone" id="dropZone">
           <input type="file" id="fileInput" accept="image/*,video/*" onchange="onFileSelect(this)" />
           <div class="icon" id="dropIcon">📁</div>
@@ -580,10 +588,16 @@
       }
 
       document.getElementById('fileInput').accept = mode === 'creative' ? 'image/*' : 'video/*';
-      const dropText = document.getElementById('dropText');
-      if (mode === 'creative') dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
-      else if (mode === 'dubbing') dropText.textContent = 'Drop your short video here (MP4, MOV, AVI, WEBM)';
-      else dropText.textContent = 'Drop your LONG video here to extract highlights (MP4, MOV, AVI)';
+      if (mode === 'creative') {
+        dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
+        document.getElementById('urlInputContainer').classList.add('hidden');
+      } else if (mode === 'dubbing') {
+        dropText.textContent = 'Drop your short video here (MP4, MOV, AVI, WEBM)';
+        document.getElementById('urlInputContainer').classList.remove('hidden');
+      } else {
+        dropText.textContent = 'Drop your LONG video here to extract highlights (MP4, MOV, AVI)';
+        document.getElementById('urlInputContainer').classList.remove('hidden');
+      }
 
       document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : (mode === 'dubbing' ? '🎬' : '✂️');
       clearFileInput();
@@ -591,6 +605,7 @@
 
     function clearFileInput() {
       document.getElementById('fileInput').value = '';
+      document.getElementById('videoUrlInput').value = '';
       document.getElementById('fileInfo').classList.add('hidden');
     }
 
@@ -620,9 +635,14 @@
 
     async function analyze() {
       const fileInput = document.getElementById('fileInput');
+      const videoUrlInput = document.getElementById('videoUrlInput');
       const context = document.getElementById('productContext').value.trim();
 
-      if (!fileInput.files.length) { alert('Please upload a file first.'); return; }
+      const hasFile = fileInput.files && fileInput.files.length > 0;
+      const hasUrl = videoUrlInput && videoUrlInput.value.trim() !== '';
+
+      if (currentMode === 'creative' && !hasFile) { alert('Please upload a photo first.'); return; }
+      if (currentMode !== 'creative' && !hasFile && !hasUrl) { alert('Please upload a file or paste a video link.'); return; }
       if (!context) { alert('Please provide product context.'); return; }
 
       document.getElementById('analyzeBtn').disabled = true;
@@ -631,7 +651,10 @@
       document.getElementById('analyzeStatusText').textContent = 'Analyzing with Gemini AI...';
 
       const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      }
+      formData.append('video_url', videoUrlInput.value.trim());
       formData.append('product_context', context);
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
