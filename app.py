@@ -123,7 +123,7 @@ REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
 1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video. Total combined duration of segments for one clip should be 20-25 seconds.
 2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
-4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips:
+4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips. IMPORTANT: Ensure all double quotes inside strings are properly escaped (e.g. \\"):
 {{
   "clips": [
     {{
@@ -191,7 +191,21 @@ REQUIREMENTS:
         except Exception:
             pass
 
-    return json.loads(response.text)
+    try:
+        # Strip potential markdown blocks Gemini sometimes adds despite settings
+        raw_text = response.text.strip()
+        if raw_text.startswith('```json'):
+            raw_text = raw_text[7:]
+        elif raw_text.startswith('```'):
+            raw_text = raw_text[3:]
+        if raw_text.endswith('```'):
+            raw_text = raw_text[:-3]
+            
+        return json.loads(raw_text.strip())
+        
+    except json.JSONDecodeError as e:
+        print(f"Gemini raw failed response: {response.text}")
+        raise RuntimeError(f"Gemini returned invalid JSON (often caused by unescaped quotes). Please try again. Error: {str(e)}")
 
 
 def generate_tts(voiceover_script, voice_name=None):
