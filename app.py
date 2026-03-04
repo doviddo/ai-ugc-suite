@@ -157,10 +157,10 @@ CRITICAL JSON RULES:
 
     else:
         # creative
-        prompt = f"""You are a professional UGC video marketing expert for the Russian market.
+        prompt = f"""You are a professional UGC video marketing expert for the German market.
 
 Analyze this product image and the marketing info below.
-Create a Russian voiceover script and a prompt for a generative AI video model (like Google Veo 3) based on the image.
+Create a German voiceover script and a prompt for a generative AI video model (like Google Veo 3) based on the image.
 
 PRODUCT CONTEXT:
 {product_context}
@@ -168,8 +168,8 @@ PRODUCT CONTEXT:
 REQUIREMENTS:
 1. Return ONLY a valid JSON object with EXACTLY two fields.
   1) "video_prompt" - a detailed cinematic description in English for Google Veo 3. Focus on PRODUCT SHOTS and HANDS only! Show hands unboxing, consuming, or using the product. NO talking heads, NO people speaking. Just aesthetic ASMR-style interactions and background actions.
-  2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN RUSSIAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
-- voiceover_script MUST be extremely short, punchy, and informal ("ты"-style). Max 6 seconds!"""
+  2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN GERMAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
+- voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
 
     # Define strict JSON schemas based on mode to guarantee zero parsing errors
     if mode == 'clipper':
