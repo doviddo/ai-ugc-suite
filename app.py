@@ -143,7 +143,7 @@ PRODUCT CONTEXT:
 
 REQUIREMENTS:
 1. Return ONLY a valid JSON object with EXACTLY three fields.
-  1) "video_prompt" - a cinematic 8-second UGC video description in English for Google Veo 3. Describe a dynamic, human-centric scene with a male/female reviewer looking directly at the camera. They should be moving their mouth as if conversing, but DO NOT use the words "speaking", "talking", "audio", "voice", or "sound" because these trigger strict Google Veo safety filters that block the video. Instead, use phrases like "moving their lips", "mouthing words silently", or "gesturing while silently communicating to the camera".
+  1) "video_prompt" - a cinematic 8-second UGC video description in English for Google Veo 3. Describe a dynamic, human-centric scene (e.g., a male/female reviewer interacting, unboxing, showing excitement). NO talking heads, but DO show the person's face, outfit, and actions reacting to the product in a modern setting.
   2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN GERMAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
   3) "sfx_list" - array of 1-3 background sound effect names that BEST match the visual scene. Choose ONLY from this list: unboxing, drone, click, whoosh, crowd, kitchen. Use "none" if no sound fits.
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
