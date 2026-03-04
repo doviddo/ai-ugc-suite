@@ -735,6 +735,8 @@ def status(job_id):
         response['error'] = job.get('error', 'Unknown error')
     elif job['status'] == 'done':
         response['output_file'] = job.get('output_file')
+        response['output_files'] = job.get('output_files')
+        response['creative_data'] = job.get('creative_data')
 
     return jsonify(response)
 
