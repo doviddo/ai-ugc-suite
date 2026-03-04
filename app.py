@@ -551,11 +551,13 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                     scale_filter = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
                 else:
                     scale_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
-                filter_parts.append(f"[vcat]{scale_filter}[vscaled]")
+                
+                # Add tpad to freeze the last frame for up to 30s so the video doesn't end before the long German voiceover
+                filter_parts.append(f"[vcat]{scale_filter},tpad=stop_mode=clone:stop_duration=30[vscaled]")
                 
                 # Apply subtitles on the scaled video
-                # Using absolute path for subtitles, yellow text with black stroke like TikTok/Reels style
-                filter_parts.append(f"[vscaled]subtitles={abs_srt_path}:force_style='FontSize=24,PrimaryColour=&H00FFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=2,Shadow=1,MarginV=40,Bold=1'[vout]")
+                # White color (&H00FFFFFF), smaller font (FontSize=16), closer to bottom (MarginV=15)
+                filter_parts.append(f"[vscaled]subtitles={abs_srt_path}:force_style='FontSize=16,PrimaryColour=&H00FFFFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=1,Shadow=1,MarginV=15,Bold=1'[vout]")
                 
                 filter_complex = ";".join(filter_parts)
                 
