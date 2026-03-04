@@ -176,8 +176,8 @@ REQUIREMENTS:
                                 items=types.Schema(
                                     type=types.Type.OBJECT,
                                     properties={
-                                        "start_time": types.Schema(type=types.Type.NUMBER, description="Start time in seconds"),
-                                        "end_time": types.Schema(type=types.Type.NUMBER, description="End time in seconds")
+                                        "start_time": types.Schema(type=types.Type.STRING, description="Start time (e.g., '12.5' or '01:15')"),
+                                        "end_time": types.Schema(type=types.Type.STRING, description="End time (e.g., '15.0' or '01:20')")
                                     }
                                 )
                             ),
@@ -410,6 +410,22 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
         raise RuntimeError(f'FFmpeg merge error: {result.stderr[-500:]}')
     return output_path
 
+def parse_time_to_sec(val):
+    """Convert string formats like '1:24', '01:24.5', or '124' to float seconds."""
+    if not val:
+        return 0.0
+    val_str = str(val).strip()
+    if ':' in val_str:
+        parts = val_str.split(':')
+        if len(parts) == 2:
+            return float(parts[0]) * 60 + float(parts[1])
+        elif len(parts) == 3:
+            return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+    try:
+        return float(val_str)
+    except Exception:
+        return 0.0
+
 
 def process_job(job_id, mode, file_path, product_context, voiceover_script=None, video_prompt=None, voice=None):
     """Background thread to process the full video generation pipeline."""
@@ -512,8 +528,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 concat_inputs = []
                 
                 for i, seg in enumerate(segments):
-                    start = float(seg.get('start_time', 0))
-                    end = float(seg.get('end_time', 5))
+                    start = parse_time_to_sec(seg.get('start_time', 0))
+                    end = parse_time_to_sec(seg.get('end_time', 5))
                     # Fallback if start >= end to avoid ffmpeg crash
                     if start >= end: end = start + 3 
                     filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}]")
