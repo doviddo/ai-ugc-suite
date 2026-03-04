@@ -143,7 +143,7 @@ PRODUCT CONTEXT:
 
 REQUIREMENTS:
 1. Return ONLY a valid JSON object with EXACTLY three fields.
-  1) "video_prompt" - a detailed cinematic description in English for Google Veo 3. Focus on PRODUCT SHOTS and HANDS only! Show hands unboxing, consuming, or using the product. NO talking heads, NO people speaking. Just aesthetic ASMR-style interactions and background actions.
+  1) "video_prompt" - a cinematic 8-second UGC video description in English for Google Veo 3. Describe a dynamic, human-centric scene (e.g., a male/female reviewer interacting, unboxing, showing excitement). NO talking heads, but DO show the person's face, outfit, and actions reacting to the product in a modern setting.
   2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN GERMAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
   3) "sfx_list" - array of 1-3 background sound effect names that BEST match the visual scene. Choose ONLY from this list: unboxing, drone, click, whoosh, crowd, kitchen. Use "none" if no sound fits.
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
@@ -328,7 +328,7 @@ def generate_veo3_video(video_prompt, aspect_ratio='vertical'):
                 reason = veo_response['raiFilteredReason']
                 raise RuntimeError(
                     f"Veo 3 rejected the prompt due to content safety filter: {reason}. "
-                    f"Try simplifying the video description (avoid 'person', 'reviewer', 'human')."
+                    f"Try altering the video description slightly to avoid restricted safety patterns."
                 )
             if 'raiMediaFilteredReasons' in veo_response:
                 reasons = " | ".join(veo_response['raiMediaFilteredReasons'])
