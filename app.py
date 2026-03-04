@@ -37,6 +37,7 @@ os.makedirs("temp", exist_ok=True)
 os.makedirs("output", exist_ok=True)
 os.makedirs("library", exist_ok=True)
 os.makedirs('assets', exist_ok=True)
+os.makedirs('assets/sfx', exist_ok=True)
 
 BG_MUSIC_PATH = 'assets/bg_music.mp3'
 if not os.path.exists(BG_MUSIC_PATH):
@@ -48,6 +49,27 @@ if not os.path.exists(BG_MUSIC_PATH):
             f.write(resp.content)
     except Exception as e:
         print(f"Failed to download bg music: {e}")
+
+# SFX library: key -> (emoji label, filename)
+SFX_LIBRARY = {
+    'unboxing': ('📦 Unboxing', 'assets/sfx/unboxing.mp3'),
+    'drone':    ('🚁 Drone flying', 'assets/sfx/drone.mp3'),
+    'click':    ('🖱️ Click / Snap', 'assets/sfx/click.mp3'),
+    'whoosh':   ('💨 Whoosh', 'assets/sfx/whoosh.mp3'),
+    'crowd':    ('👏 Crowd / Applause', 'assets/sfx/crowd.mp3'),
+    'kitchen':  ('🍳 Kitchen sounds', 'assets/sfx/kitchen.mp3'),
+}
+
+# Generate silent placeholder SFX if real files don't exist
+for _sfx_key, (_sfx_label, _sfx_path) in SFX_LIBRARY.items():
+    if not os.path.exists(_sfx_path):
+        try:
+            subprocess.run([
+                'ffmpeg', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
+                '-t', '10', _sfx_path
+            ], capture_output=True, timeout=15)
+        except Exception:
+            pass
 
 # In-memory job store
 jobs = {}
@@ -166,9 +188,10 @@ PRODUCT CONTEXT:
 {product_context}
 
 REQUIREMENTS:
-1. Return ONLY a valid JSON object with EXACTLY two fields.
+1. Return ONLY a valid JSON object with EXACTLY three fields.
   1) "video_prompt" - a detailed cinematic description in English for Google Veo 3. Focus on PRODUCT SHOTS and HANDS only! Show hands unboxing, consuming, or using the product. NO talking heads, NO people speaking. Just aesthetic ASMR-style interactions and background actions.
   2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN GERMAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
+  3) "sfx_list" - array of 1-3 background sound effect names that BEST match the visual scene. Choose ONLY from this list: unboxing, drone, click, whoosh, crowd, kitchen. Use "none" if no sound fits.
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
 
     # Define strict JSON schemas based on mode to guarantee zero parsing errors
@@ -208,7 +231,12 @@ REQUIREMENTS:
             type=types.Type.OBJECT,
             properties={
                 "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
-                "voiceover_script": types.Schema(type=types.Type.STRING, description="Russian voiceover script")
+                "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
+                "sfx_list": types.Schema(
+                    type=types.Type.ARRAY,
+                    items=types.Schema(type=types.Type.STRING,
+                        description="Sound effects from: unboxing, drone, click, whoosh, crowd, kitchen, none")
+                )
             }
         )
 
@@ -385,8 +413,8 @@ def generate_veo3_video(video_prompt):
     raise TimeoutError("Veo 3 video generation timed out after 5 minutes")
 
 
-def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, aspect_ratio='vertical'):
-    """Merge audio and video with FFmpeg, apply scale/crop to match chosen aspect ratio."""
+def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, aspect_ratio='vertical', sfx_list=None):
+    """Merge audio and video with FFmpeg, apply scale/crop and optionally mix SFX."""
     wav_path = audio_raw_path.replace('.raw', '.wav')
 
     # Determine target resolution
@@ -416,20 +444,40 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, a
     if not converted:
         raise RuntimeError('Failed to convert TTS audio to WAV')
 
-    cmd = [
-        'ffmpeg', '-y',
-        '-i', video_path,
-        '-i', wav_path,
-        '-filter_complex',
-        f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout]',
-        '-map', '[vout]',
-        '-map', '1:a:0',
-        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-b:a', '128k',
-        '-shortest',
-        output_path
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    # Determine which SFX files to mix
+    valid_sfx_paths = []
+    if sfx_list:
+        for sfx_key in sfx_list:
+            if sfx_key in SFX_LIBRARY:
+                sfx_path = SFX_LIBRARY[sfx_key][1]
+                if os.path.exists(sfx_path):
+                    valid_sfx_paths.append(sfx_path)
+
+    # Build FFmpeg command with optional SFX mixing
+    cmd = ['ffmpeg', '-y', '-i', video_path, '-i', wav_path]
+    for sfx_path in valid_sfx_paths:
+        cmd += ['-stream_loop', '-1', '-i', sfx_path]
+
+    # Build audio filter: voice at 1.0, each SFX at 0.25
+    num_inputs = 2 + len(valid_sfx_paths)
+    if valid_sfx_paths:
+        audio_parts = ['[1:a]volume=1.0[voice]']
+        mix_inputs = '[voice]'
+        for idx, _ in enumerate(valid_sfx_paths):
+            audio_parts.append(f'[{idx+2}:a]volume=0.25[sfx{idx}]')
+            mix_inputs += f'[sfx{idx}]'
+        audio_parts.append(f'{mix_inputs}amix=inputs={1+len(valid_sfx_paths)}:duration=first:dropout_transition=0[aout]')
+        audio_filter = ';'.join(audio_parts)
+        filter_complex = f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout];{audio_filter}'
+        cmd += ['-filter_complex', filter_complex, '-map', '[vout]', '-map', '[aout]']
+    else:
+        filter_complex = f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout]'
+        cmd += ['-filter_complex', filter_complex, '-map', '[vout]', '-map', '1:a:0']
+
+    cmd += ['-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-b:a', '128k', '-shortest', output_path]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     if result.returncode != 0:
         raise RuntimeError(f'FFmpeg merge error: {result.stderr[-500:]}')
     return output_path
@@ -482,7 +530,7 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 
             audio_duration = get_video_duration(wav_path)
 
-        if mode == 'creative':
+        elif mode == 'creative':
             jobs[job_id]['status'] = 'generating_video'
             video_data = generate_veo3_video(video_prompt)
             video_path = f"temp/{job_id}_video.mp4"
@@ -492,7 +540,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             jobs[job_id]['status'] = 'merging'
             output_path = f"output/{job_id}_final.mp4"
             aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio)
+            sfx_list = jobs[job_id].get('sfx_list', [])
+            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio, sfx_list)
 
         elif mode == 'dubbing':
             jobs[job_id]['status'] = 'processing_video'
@@ -504,7 +553,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             jobs[job_id]['status'] = 'merging'
             output_path = f"output/{job_id}_final.mp4"
             aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio)
+            sfx_list = jobs[job_id].get('sfx_list', [])
+            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio, sfx_list)
             
         elif mode == 'clipper':
             creative_data = jobs[job_id]['creative_data']
@@ -744,6 +794,7 @@ def generate():
     job_id = data.get('job_id')
     voiceover_script = data.get('voiceover_script', '').strip()
     voice = data.get('voice', TTS_VOICE)
+    sfx_list = data.get('sfx_list', [])
 
     if not job_id or job_id not in jobs:
         return jsonify({'error': 'Invalid job ID'}), 400
@@ -761,6 +812,7 @@ def generate():
     file_path = job['file_path']
 
     jobs[job_id]['status'] = 'starting'
+    jobs[job_id]['sfx_list'] = [s for s in sfx_list if s and s != 'none']
 
     thread = threading.Thread(
         target=process_job,

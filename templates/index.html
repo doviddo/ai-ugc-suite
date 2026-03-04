@@ -546,13 +546,25 @@
         </div>
       </div>
 
+      <!-- SFX Selection (shown only for creative/dubbing) -->
+      <div class="card" id="sfxCard" style="display:none;">
+        <label>🎵 Background Sound Effects (AI Suggested)</label>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">AI picked these sounds based on your product.
+          Toggle on/off or add more.</p>
+        <div id="sfxChips" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;"></div>
+        <div style="font-size:0.75rem;color:var(--muted);">
+          Available:
+          <span id="sfxAvailable" style="font-style:italic;"></span>
+        </div>
+      </div>
+
       <div class="card hidden" id="videPromptCard">
         <label>🎬 Video Generation Prompt (Veo 3)</label>
         <div class="script-box" style="color:var(--muted); font-size:0.875rem;" id="videoPromptPreview"></div>
       </div>
 
       <button class="btn btn-success" onclick="generate()">
-        ✨ Confirm & Generate Video
+        ✨ Confirm &amp; Generate Video
       </button>
       <button class="btn" style="background:var(--surface2);color:var(--muted);width:100%;margin-top:0.75rem;"
         onclick="goBack()">
@@ -751,14 +763,20 @@
           badge.className = 'mode-badge creative';
           document.getElementById('videPromptCard').classList.remove('hidden');
           document.getElementById('videoPromptPreview').textContent = data.creative_data.video_prompt || '';
+          // Show SFX block for creative/dubbing mode
+          renderSfxChips(data.creative_data.sfx_list || []);
+          document.getElementById('sfxCard').style.display = 'block';
         } else if (data.mode === 'dubbing') {
           badge.textContent = '🎬 Mode: Smart Dubbing (Video → TTS)';
           badge.className = 'mode-badge dubbing';
           document.getElementById('videPromptCard').classList.add('hidden');
+          renderSfxChips([]);
+          document.getElementById('sfxCard').style.display = 'block';
         } else {
           badge.textContent = '✂️ Mode: Smart Clipper (Extracting Highlights)';
           badge.className = 'mode-badge dubbing';
           document.getElementById('videPromptCard').classList.add('hidden');
+          document.getElementById('sfxCard').style.display = 'none';
         }
 
         showPanel('review');
@@ -773,9 +791,53 @@
       }
     }
 
+    const SFX_ALL = {
+      unboxing: '📦 Unboxing',
+      drone: '🚁 Drone',
+      click: '🖱️ Click',
+      whoosh: '💨 Whoosh',
+      crowd: '👏 Crowd',
+      kitchen: '🍳 Kitchen'
+    };
+    let activeSfx = new Set();
+
+    function renderSfxChips(suggested) {
+      activeSfx = new Set(suggested.filter(s => s && s !== 'none'));
+      const chips = document.getElementById('sfxChips');
+      chips.innerHTML = '';
+      const available = Object.entries(SFX_ALL);
+      available.forEach(([key, label]) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.sfx = key;
+        btn.style.cssText = `padding:0.4rem 0.9rem;border-radius:99px;border:1px solid;font-size:0.8rem;cursor:pointer;transition:all 0.2s;font-family:inherit;`;
+        updateChipStyle(btn, activeSfx.has(key));
+        btn.textContent = label;
+        btn.onclick = () => {
+          if (activeSfx.has(key)) activeSfx.delete(key); else activeSfx.add(key);
+          updateChipStyle(btn, activeSfx.has(key));
+        };
+        chips.appendChild(btn);
+      });
+      document.getElementById('sfxAvailable').textContent = Object.values(SFX_ALL).join(', ');
+    }
+
+    function updateChipStyle(btn, active) {
+      if (active) {
+        btn.style.background = 'rgba(124,106,247,0.2)';
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+      } else {
+        btn.style.background = 'var(--surface2)';
+        btn.style.borderColor = 'var(--border)';
+        btn.style.color = 'var(--muted)';
+      }
+    }
+
     async function generate() {
       const script = document.getElementById('voiceoverEditor').value.trim();
       const voice = document.getElementById('voiceSelect').value;
+      const sfx_list = Array.from(activeSfx);
       if (!script && currentMode !== 'clipper') { alert('Script cannot be empty.'); return; }
 
       showPanel('result');
@@ -785,7 +847,7 @@
         const resp = await fetch('/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: currentJobId, voiceover_script: script, voice })
+          body: JSON.stringify({ job_id: currentJobId, voiceover_script: script, voice, sfx_list })
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Failed to start generation');
