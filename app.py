@@ -537,8 +537,7 @@ def apply_outro_and_cover(input_path, output_path, cover_path):
         '-c:a', 'aac', '-b:a', '128k', output_path
     ], capture_output=True, text=True)
     if res.returncode != 0:
-        import shutil
-        shutil.copy2(input_path, output_path)
+        raise RuntimeError(f"FFmpeg Outro Error: {res.stderr[-1000:]}")
 
 def process_job(job_id, mode, file_path, product_context, voiceover_script=None, video_prompt=None, voice=None):
     """Background thread to process the full video generation pipeline."""
