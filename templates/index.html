@@ -463,6 +463,7 @@
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="setMode('creative')" id="tab-creative">📸 Photo → Full Video</button>
         <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
+        <button class="mode-tab" onclick="setMode('clipper')" id="tab-clipper">✂️ Video → Smart Clipper</button>
       </div>
 
       <div class="card" id="libraryCard">
@@ -519,6 +520,9 @@
           </select>
         </div>
         <div id="clipCountContainer" class="hidden">
+          <label>Number of Clips to Extract</label>
+          <input type="number" id="clipCountInput" min="1" max="10" value="1"
+            style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: inherit;">
         </div>
       </div>
 
@@ -654,16 +658,24 @@
       currentMode = mode;
       document.getElementById('tab-creative').classList.toggle('active', mode === 'creative');
       document.getElementById('tab-dubbing').classList.toggle('active', mode === 'dubbing');
+      document.getElementById('tab-clipper').classList.toggle('active', mode === 'clipper');
 
       document.getElementById('fileInput').accept = mode === 'creative' ? 'image/*' : 'video/*';
       if (mode === 'creative') {
         dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
         document.getElementById('urlInputContainer').classList.add('hidden');
         document.getElementById('libraryCard').classList.add('hidden');
+        document.getElementById('clipCountContainer').classList.add('hidden');
       } else {
-        dropText.textContent = 'Drop your short video here (MP4, MOV, AVI, WEBM)';
+        dropText.textContent = 'Drop your video here (MP4, MOV, AVI, WEBM)';
         document.getElementById('urlInputContainer').classList.remove('hidden');
         document.getElementById('libraryCard').classList.remove('hidden');
+
+        if (mode === 'clipper') {
+          document.getElementById('clipCountContainer').classList.remove('hidden');
+        } else {
+          document.getElementById('clipCountContainer').classList.add('hidden');
+        }
       }
 
       document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : '🎬';
@@ -727,6 +739,12 @@
       formData.append('product_context', context);
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
+      if (currentMode === 'clipper') {
+        const clipCountInput = document.getElementById('clipCountInput');
+        if (clipCountInput) {
+          formData.append('clip_count', clipCountInput.value);
+        }
+      }
       if (selectedLibVideo) {
         formData.append('selected_video', selectedLibVideo);
       }
@@ -929,8 +947,40 @@
         dlink.style.width = "100%";
         dlink.textContent = "⬇️ Download Clip";
 
+        const coverUrl = videoUrl.replace('.mp4', '_cover.jpg');
+
+        const titleCov = document.createElement('h5');
+        titleCov.textContent = "Thumbnail / Cover Image:";
+        titleCov.style.color = "var(--muted)";
+        titleCov.style.marginTop = "1.5rem";
+        titleCov.style.marginBottom = "0.75rem";
+
+        const img = document.createElement('img');
+        img.src = coverUrl;
+        img.style.width = "100%";
+        img.style.borderRadius = "10px";
+        img.style.background = "#000";
+        img.style.marginBottom = "1rem";
+        img.style.aspectRatio = "9/16";
+        img.style.objectFit = "cover";
+        
+        const dlinkImg = document.createElement('a');
+        dlinkImg.href = coverUrl;
+        dlinkImg.download = coverUrl.split('/').pop();
+        dlinkImg.className = "btn";
+        dlinkImg.style.background = "var(--surface)";
+        dlinkImg.style.border = "1px solid var(--border)";
+        dlinkImg.style.color = "var(--text)";
+        dlinkImg.style.textDecoration = "none";
+        dlinkImg.style.width = "100%";
+        dlinkImg.style.marginBottom = "0.5rem";
+        dlinkImg.textContent = "🖼️ Download Cover";
+
         wrapper.appendChild(video);
         wrapper.appendChild(dlink);
+        wrapper.appendChild(titleCov);
+        wrapper.appendChild(img);
+        wrapper.appendChild(dlinkImg);
         container.appendChild(wrapper);
       });
 

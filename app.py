@@ -63,13 +63,7 @@ SFX_LIBRARY = {
 # Generate silent placeholder SFX if real files don't exist
 for _sfx_key, (_sfx_label, _sfx_path) in SFX_LIBRARY.items():
     if not os.path.exists(_sfx_path):
-        try:
-            subprocess.run([
-                'ffmpeg', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
-                '-t', '10', _sfx_path
-            ], capture_output=True, timeout=15)
-        except Exception:
-            pass
+        pass
 
 # In-memory job store
 jobs = {}
@@ -501,6 +495,34 @@ def parse_time_to_sec(val):
         return 0.0
 
 
+def apply_outro_and_cover(input_path, output_path, cover_path):
+    duration = get_video_duration(input_path)
+    subprocess.run([
+        'ffmpeg', '-y', '-ss', str(min(1.0, duration/2)), '-i', input_path,
+        '-vframes', '1', '-q:v', '5', cover_path
+    ], capture_output=True)
+    abs_srt_path = os.path.abspath("temp/outro.srt").replace("\\", "/").replace(":", "\\:")
+    def format_time(seconds):
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int((seconds % 1) * 1000)
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+    start_str = format_time(duration)
+    end_str = format_time(duration + 2.0)
+    with open("temp/outro.srt", 'w', encoding='utf-8') as f:
+        f.write(f"1\n{start_str} --> {end_str}\nwww.techflug.de\n")
+    filter_complex = f"[0:v]tpad=stop_mode=clone:stop_duration=2,subtitles={abs_srt_path}:force_style='FontSize=40,PrimaryColour=&H00FFFFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=1,Shadow=1,Alignment=5'[vout];[0:a]apad=pad_dur=2[aout]"
+    res = subprocess.run([
+        'ffmpeg', '-y', '-i', input_path, '-filter_complex', filter_complex,
+        '-map', '[vout]', '-map', '[aout]',
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-b:a', '128k', output_path
+    ], capture_output=True, text=True)
+    if res.returncode != 0:
+        import shutil
+        shutil.copy2(input_path, output_path)
+
 def process_job(job_id, mode, file_path, product_context, voiceover_script=None, video_prompt=None, voice=None):
     """Background thread to process the full video generation pipeline."""
     try:
@@ -542,10 +564,13 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 f.write(video_data)
             
             jobs[job_id]['status'] = 'merging'
+            temp_output = f"temp/{job_id}_final_temp.mp4"
             output_path = f"output/{job_id}_final.mp4"
             aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
             sfx_list = jobs[job_id].get('sfx_list', [])
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio, sfx_list)
+            merge_audio_video(video_path, audio_raw_path, temp_output, get_video_duration(video_path), aspect_ratio, sfx_list)
+            apply_outro_and_cover(temp_output, output_path, f"output/{job_id}_final_cover.jpg")
+            jobs[job_id]['output_cover'] = f"{job_id}_final_cover.jpg"
 
         elif mode == 'dubbing':
             jobs[job_id]['status'] = 'processing_video'
@@ -555,10 +580,13 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             ], check=True, capture_output=True, timeout=120)
 
             jobs[job_id]['status'] = 'merging'
+            temp_output = f"temp/{job_id}_final_temp.mp4"
             output_path = f"output/{job_id}_final.mp4"
             aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
             sfx_list = jobs[job_id].get('sfx_list', [])
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio, sfx_list)
+            merge_audio_video(video_path, audio_raw_path, temp_output, get_video_duration(video_path), aspect_ratio, sfx_list)
+            apply_outro_and_cover(temp_output, output_path, f"output/{job_id}_final_cover.jpg")
+            jobs[job_id]['output_cover'] = f"{job_id}_final_cover.jpg"
             
         elif mode == 'clipper':
             creative_data = jobs[job_id]['creative_data']
@@ -655,6 +683,7 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 audio_filter = "[1:a]volume=1.0[v_aud];[2:a]volume=0.1[bg_aud];[v_aud][bg_aud]amix=inputs=2:duration=first:dropout_transition=0[aout]"
                 filter_complex += f";{audio_filter}"
                 
+                temp_output = f"temp/{job_id}_clip{clip_idx}_temp.mp4"
                 output_path = f"output/{job_id}_clip{clip_idx + 1}.mp4"
                 
                 bg_music_args = []
@@ -675,7 +704,7 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                     '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
                     '-c:a', 'aac', '-b:a', '128k',
                     '-shortest',
-                    output_path
+                    temp_output
                 ]
                 
                 res = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
@@ -683,6 +712,7 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                     print(f"Clip {clip_idx} FFmpeg error: {res.stderr[-500:]}")
                     continue # Try to generate the next clips even if one fails
                 
+                apply_outro_and_cover(temp_output, output_path, f"output/{job_id}_clip{clip_idx + 1}_cover.jpg")
                 jobs[job_id]['output_files'].append(f"{job_id}_clip{clip_idx + 1}.mp4")
 
         jobs[job_id]['status'] = 'done'
@@ -842,6 +872,7 @@ def status(job_id):
     elif job['status'] == 'done':
         response['output_file'] = job.get('output_file')
         response['output_files'] = job.get('output_files')
+        response['output_cover'] = job.get('output_cover')
         response['creative_data'] = job.get('creative_data')
 
     return jsonify(response)
