@@ -209,7 +209,10 @@ REQUIREMENTS:
 
     if is_video:
         # For large videos, we MUST use the File API to upload rather than inline memory payload
-        uploaded_file = gemini_client.files.upload(file=file_path)
+        uploaded_file = gemini_client.files.upload(
+            file=file_path, 
+            config=types.UploadFileConfig(mime_type=mime_type, display_name=os.path.basename(file_path)[:40])
+        )
         
         # Wait for the file to be processed by Gemini backend
         while True:
@@ -693,7 +696,12 @@ def analyze():
         if not selected_video:
             try: os.remove(save_path)
             except: pass
-        return jsonify({'error': f'Gemini analysis failed: {str(e)}'}), 500
+            
+        err = str(e)
+        if "Unable to process input" in err:
+            return jsonify({'error': 'Gemini AI failed to read this video format. It might use an unsupported codec. Please try converting it to a standard MP4 or use a different video.'}), 400
+            
+        return jsonify({'error': f'Gemini analysis failed: {err}'}), 500
 
     jobs[job_id] = {
         'status': 'pending_confirmation',
