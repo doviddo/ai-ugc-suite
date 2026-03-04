@@ -99,10 +99,10 @@ def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=Non
 
     if mode == 'dubbing':
         duration_hint = f"{int(video_duration_sec)} seconds" if video_duration_sec else "15 seconds"
-        prompt = f"""You are a professional UGC video marketing expert for the German market.
+        prompt = f"""You are a professional UGC video marketing expert for the Russian market.
 
 Analyze this video footage and the product information below.
-Create a German voiceover script that fits EXACTLY {duration_hint} of video.
+Create a Russian voiceover script that fits EXACTLY {duration_hint} of video.
 
 PRODUCT CONTEXT / MARKETING INFO:
 {product_context}
@@ -111,14 +111,14 @@ REQUIREMENTS:
 - The video shows someone interacting with the product. Write a voiceover that matches what's happening visually.
 - The script MUST be readable in exactly {duration_hint} at a natural speaking pace.
 - Return ONLY a valid JSON object with exactly two fields:
-  1) "voiceover_script" - enthusiastic German voiceover, informal "du"-style, first person, as if a male reviewer speaks to camera. Length: {duration_hint} when spoken at normal pace.
+  1) "voiceover_script" - enthusiastic Russian voiceover, informal "ты"-style, first person, as if a male reviewer speaks to camera. Length: {duration_hint} when spoken at normal pace.
   2) "video_description" - brief English description of what happens in the video (for our records)
-- voiceover_script MUST be in German only.
+- voiceover_script MUST be in Russian only.
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
     
     elif mode == 'clipper':
         clip_count = 1 # Force 1 clip based on user prompt directly
-        prompt = f"""You are a professional UGC video editor and storyteller for the German market.
+        prompt = f"""You are a professional UGC video editor and storyteller for the Russian market.
 
 🧠 BRAINSTORM MODE ACTIVATED.
 Analyze this vertical video footage and the prompt below.
@@ -129,7 +129,7 @@ USER PROMPT / MARKETING INFO:
 
 REQUIREMENTS FOR THIS VIDEO:
 1. Select 4 to 6 of the most visually interesting and dynamic moments from the video. Total combined duration of segments should be 20-25 seconds.
-2. NARRATE THE ACTION: The German voiceover must explicitly and enthusiastically DESCRIBE what is happening in the selected moments on screen! Make it sound like an exciting, interesting highlight reel (informal "du"-style). It must fit the 20-25s length when spoken.
+2. NARRATE THE ACTION: The Russian voiceover must explicitly and enthusiastically DESCRIBE what is happening in the selected moments on screen! Make it sound like an exciting, interesting highlight reel (informal "ты"-style). It must fit the 20-25s length when spoken.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
 4. Return ONLY a valid JSON object matching exactly this structure.
 CRITICAL JSON RULES:
@@ -145,7 +145,7 @@ CRITICAL JSON RULES:
         {{"start_time": "1.5", "end_time": "4.0"}},
         {{"start_time": "12.0", "end_time": "15.5"}}
       ],
-      "voiceover_script": "full german script without quotes",
+      "voiceover_script": "full russian script without quotes",
       "subtitles": ["phrase 1", "phrase 2"]
     }}
   ]
@@ -153,19 +153,19 @@ CRITICAL JSON RULES:
 
     else:
         # creative
-        prompt = f"""You are a professional UGC video marketing expert for the German market.
+        prompt = f"""You are a professional UGC video marketing expert for the Russian market.
 
-Analyze this product photo and the marketing context below.
-Create a complete UGC video concept.
+Analyze this product image and the marketing info below.
+Create a Russian voiceover script and a prompt for a generative AI video model (like Google Veo 3) based on the image.
 
-PRODUCT CONTEXT / MARKETING INFO:
+PRODUCT CONTEXT:
 {product_context}
 
 REQUIREMENTS:
-- Return ONLY a valid JSON object with exactly two fields:
-  1) "video_prompt" - a detailed cinematic description in English for Google Veo 3 (max 8 seconds). Focus on PRODUCT SHOTS and HANDS only — show hands unboxing, holding, demonstrating the product against a clean background. NO full person, NO face. Cinematic close-ups, smooth camera movements, premium lighting. Silent, no speech.
-  2) "voiceover_script" - an enthusiastic script ENTIRELY IN GERMAN, exactly 8 seconds when spoken at normal pace, first person, informal "du"-style. Highlight the key benefit directly. Short, punchy, memorable.
-- voiceover_script MUST be in German only. Keep it SHORT — 8 seconds max."""
+1. Return ONLY a valid JSON object with EXACTLY two fields.
+  1) "video_prompt" - highly detailed English prompt describing how to animate the scene (camera movement, lighting, subject action).
+  2) "voiceover_script" - an enthusiastic script ENTIRELY IN RUSSIAN, exactly 8 seconds when spoken at normal pace, first person, informal "ты"-style. Highlight the key benefit directly. Short, punchy, memorable.
+- voiceover_script MUST be in Russian only. Keep it SHORT — 8 seconds max."""
 
     # Define strict JSON schemas based on mode to guarantee zero parsing errors
     if mode == 'clipper':
@@ -189,7 +189,7 @@ REQUIREMENTS:
                                     }
                                 )
                             ),
-                            "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
+                            "voiceover_script": types.Schema(type=types.Type.STRING, description="Russian voiceover script"),
                             "subtitles": types.Schema(
                                 type=types.Type.ARRAY,
                                 items=types.Schema(type=types.Type.STRING, description="Short phrases for subtitles")
@@ -204,7 +204,7 @@ REQUIREMENTS:
             type=types.Type.OBJECT,
             properties={
                 "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
-                "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script")
+                "voiceover_script": types.Schema(type=types.Type.STRING, description="Russian voiceover script")
             }
         )
 

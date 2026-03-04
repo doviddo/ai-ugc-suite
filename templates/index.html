@@ -437,7 +437,7 @@
   <div class="container">
     <header>
       <div class="logo">🎬 AI UGC Suite</div>
-      <p>Generate professional German-language UGC video content with AI</p>
+      <p>Generate professional Russian-language UGC video content with AI</p>
     </header>
 
     <!-- Step indicator -->
@@ -462,7 +462,7 @@
     <div id="panel-upload">
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="setMode('creative')" id="tab-creative">📸 Photo → Full Video</button>
-        <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
+        <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → Russian Dub</button>
         <button class="mode-tab" onclick="setMode('clipper')" id="tab-clipper"
           style="background: linear-gradient(135deg, #10b981, #059669); color: white;">✂️ Smart Clipper</button>
       </div>
@@ -540,10 +540,10 @@
     <div id="panel-review" class="hidden">
       <div class="card">
         <div class="mode-badge" id="modeBadge"></div>
-        <label>📝 German Voiceover Script (Editable)</label>
+        <label>📝 Russian Voiceover Script (Editable)</label>
         <div class="script-box">
-          <div class="lang-badge">🇩🇪 DEUTSCH</div>
-          <textarea id="voiceoverEditor" rows="6" placeholder="German voiceover script..."></textarea>
+          <div class="lang-badge">�� РУССКИЙ</div>
+          <textarea id="voiceoverEditor" rows="6" placeholder="Russian voiceover script..."></textarea>
         </div>
       </div>
 
@@ -609,7 +609,7 @@
     const steps = {
       STATUS_LABELS: {
         starting: { text: 'Starting pipeline...', pct: 5 },
-        generating_audio: { text: 'Generating German voiceover (TTS)...', pct: 25 },
+        generating_audio: { text: 'Generating Russian voiceover (TTS)...', pct: 25 },
         generating_video: { text: 'Generating video with Veo 3 (may take 2-4 min)...', pct: 50 },
         processing_video: { text: 'Processing uploaded video...', pct: 40 },
         merging: { text: 'Merging audio and video with FFmpeg...', pct: 85 },
