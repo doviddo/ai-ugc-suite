@@ -330,6 +330,12 @@ def generate_veo3_video(video_prompt, aspect_ratio='vertical'):
                     f"Veo 3 rejected the prompt due to content safety filter: {reason}. "
                     f"Try simplifying the video description (avoid 'person', 'reviewer', 'human')."
                 )
+            if 'raiMediaFilteredReasons' in veo_response:
+                reasons = " | ".join(veo_response['raiMediaFilteredReasons'])
+                raise RuntimeError(
+                    f"Veo 3 API rejected the video due to safety filters: {reasons}\n"
+                    f"Please simplify the prompt to avoid this."
+                )
 
             # Try generatedSamples (v1) or generatedVideos (newer API versions)
             samples = veo_response.get('generatedSamples') or veo_response.get('generatedVideos')
