@@ -118,18 +118,22 @@ REQUIREMENTS:
     
     elif mode == 'clipper':
         clip_count = 1 # Force 1 clip based on user prompt directly
-        prompt = f"""You are a professional UGC video editor and storyteller for the Russian market.
+        prompt = f"""You are a top-tier TikTok creator and storyteller specializing in psychological thriller movie recaps for the Russian market.
 
-🧠 BRAINSTORM MODE ACTIVATED.
-Analyze this vertical video footage and the prompt below.
-Your task is to create 1 fast-paced, 20-25 second UGC promotional video from this single footage.
+🧠 PSYCHOLOGICAL THRILLER MODE ACTIVATED.
+Analyze this video footage and the context below.
+Your task is to create a viral, engaging 20-30 second TikTok video analyzing or retelling the footage as a deep psychological thriller.
 
-USER PROMPT / MARKETING INFO:
+USER PROMPT / CONTEXT:
 {product_context}
 
 REQUIREMENTS FOR THIS VIDEO:
-1. Select 4 to 6 of the most visually interesting and dynamic moments from the video. Total combined duration of segments should be 20-25 seconds.
-2. NARRATE THE ACTION: The Russian voiceover must explicitly and enthusiastically DESCRIBE what is happening in the selected moments on screen! Make it sound like an exciting, interesting highlight reel (informal "ты"-style). It must fit the 20-25s length when spoken.
+1. VISUALS: Select 4 to 6 minimal fragments or stop-frames that show tension, strange expressions, or key details. Total combined duration of segments should be 20-30 seconds.
+2. NARRATION: Write a brilliant Russian voiceover script that finds a deep, hidden meaning or tells the story as a intense thriller.
+   - DO NOT USE boring openings like "В этом фильме парень встретил девушку…".
+   - INSTEAD, USE a powerful thriller hook like "Он даже не знал, что через 48 часов его жизнь закончится…" or "Посмотрите на её глаза, вы замечаете эту жуткую деталь?".
+   - Change the delivery to be mysterious, analytical, and insightful.
+   - It must perfectly fit the 20-30s length when spoken.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
 4. Return ONLY a valid JSON object matching exactly this structure.
 CRITICAL JSON RULES:
