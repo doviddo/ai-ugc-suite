@@ -149,18 +149,27 @@ REQUIREMENTS:
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
 
     # Define strict JSON schemas based on mode to guarantee zero parsing errors
-    schema = types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
-            "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
-            "sfx_list": types.Schema(
-                type=types.Type.ARRAY,
-                items=types.Schema(type=types.Type.STRING,
-                    description="Sound effects from: unboxing, drone, click, whoosh, crowd, kitchen, none")
-            )
-        }
-    )
+    if mode == 'dubbing':
+        schema = types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "voiceover_script": types.Schema(type=types.Type.STRING, description="Russian voiceover script"),
+                "video_description": types.Schema(type=types.Type.STRING, description="English description of what happens in the video")
+            }
+        )
+    else:
+        schema = types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
+                "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
+                "sfx_list": types.Schema(
+                    type=types.Type.ARRAY,
+                    items=types.Schema(type=types.Type.STRING,
+                        description="Sound effects from: unboxing, drone, click, whoosh, crowd, kitchen, none")
+                )
+            }
+        )
 
     if is_video:
         # For large videos, we MUST use the File API to upload rather than inline memory payload
