@@ -530,7 +530,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 
             audio_duration = get_video_duration(wav_path)
 
-        elif mode == 'creative':
+        # ── Mode-specific video pipeline ──
+        if mode == 'creative':
             jobs[job_id]['status'] = 'generating_video'
             video_data = generate_veo3_video(video_prompt)
             video_path = f"temp/{job_id}_video.mp4"
