@@ -429,7 +429,11 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 jobs[job_id]['status'] = f'processing_clip_{clip_idx + 1}_of_{len(clips)}'
                 
                 # A. Generate Audio for this specific clip
-                clip_voice_script = clip_data.get('voiceover_script', voiceover_script)
+                clip_voice_script = clip_data.get('voiceover_script')
+                # If Gemini forgot the script, or user entered something too short, provide a valid fallback
+                if not clip_voice_script or len(str(clip_voice_script).strip()) < 3:
+                    clip_voice_script = "Hier ist ein automatisch generiertes Video für dieses Produkt."
+                    
                 audio_raw_path = f"temp/{job_id}_clip{clip_idx}_audio.raw"
                 audio_data = generate_tts(clip_voice_script, voice)
                 with open(audio_raw_path, 'wb') as f:
