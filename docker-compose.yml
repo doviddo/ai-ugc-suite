@@ -13,3 +13,5 @@ services:
       - ./output:/app/output
       - ./library:/app/library
       - ./assets:/app/assets
+      - ./app.py:/app/app.py
+      - ./templates:/app/templates
