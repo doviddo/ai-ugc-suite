@@ -583,13 +583,13 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                     '-filter_complex', filter_complex,
                     '-map', '[vout]',
                     '-map', '[aout]',
-                    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
                     '-c:a', 'aac', '-b:a', '128k',
                     '-shortest',
                     output_path
                 ]
                 
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
                 if res.returncode != 0:
                     print(f"Clip {clip_idx} FFmpeg error: {res.stderr[-500:]}")
                     continue # Try to generate the next clips even if one fails
