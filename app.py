@@ -449,20 +449,37 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, a
                 if os.path.exists(sfx_path):
                     valid_sfx_paths.append(sfx_path)
 
-    # Build FFmpeg command with optional SFX mixing
-    cmd = ['ffmpeg', '-y', '-i', video_path, '-i', wav_path]
+    # Add Background Music (always mixed at 10% volume)
+    bg_music_args = []
+    has_bg_music = os.path.exists(BG_MUSIC_PATH)
+    if has_bg_music:
+        bg_music_args = ['-stream_loop', '-1', '-i', BG_MUSIC_PATH]
+
+    # Build FFmpeg command with optional SFX mixing and BG Music
+    cmd = ['ffmpeg', '-y', '-i', video_path, '-i', wav_path] + bg_music_args
     for sfx_path in valid_sfx_paths:
         cmd += ['-stream_loop', '-1', '-i', sfx_path]
 
-    # Build audio filter: voice at 1.0, each SFX at 0.25
-    num_inputs = 2 + len(valid_sfx_paths)
-    if valid_sfx_paths:
-        audio_parts = ['[1:a]volume=1.0[voice]']
-        mix_inputs = '[voice]'
-        for idx, _ in enumerate(valid_sfx_paths):
-            audio_parts.append(f'[{idx+2}:a]volume=0.25[sfx{idx}]')
-            mix_inputs += f'[sfx{idx}]'
-        audio_parts.append(f'{mix_inputs}amix=inputs={1+len(valid_sfx_paths)}:duration=first:dropout_transition=0[aout]')
+    # Build audio filter: voice at 1.0, BG music at 0.1, each SFX at 0.25
+    audio_parts = ['[1:a]volume=1.0[voice]']
+    mix_inputs = '[voice]'
+    input_count = 1
+    
+    current_idx = 2
+    if has_bg_music:
+        audio_parts.append(f'[{current_idx}:a]volume=0.1[bg]')
+        mix_inputs += '[bg]'
+        input_count += 1
+        current_idx += 1
+
+    for idx, _ in enumerate(valid_sfx_paths):
+        audio_parts.append(f'[{current_idx}:a]volume=0.25[sfx{idx}]')
+        mix_inputs += f'[sfx{idx}]'
+        input_count += 1
+        current_idx += 1
+
+    if input_count > 1:
+        audio_parts.append(f'{mix_inputs}amix=inputs={input_count}:duration=first:dropout_transition=0[aout]')
         audio_filter = ';'.join(audio_parts)
         filter_complex = f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout];{audio_filter}'
         cmd += ['-filter_complex', filter_complex, '-map', '[vout]', '-map', '[aout]']
