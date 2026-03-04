@@ -131,8 +131,7 @@ REQUIREMENTS:
   2) "video_description" - brief English description of what happens in the video (for our records)
 - voiceover_script MUST be in Russian only.
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
-    
-
+    else:
         # creative
         prompt = f"""You are a professional UGC video marketing expert for the German market.
 
@@ -150,19 +149,18 @@ REQUIREMENTS:
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
 
     # Define strict JSON schemas based on mode to guarantee zero parsing errors
-
-        schema = types.Schema(
-            type=types.Type.OBJECT,
-            properties={
-                "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
-                "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
-                "sfx_list": types.Schema(
-                    type=types.Type.ARRAY,
-                    items=types.Schema(type=types.Type.STRING,
-                        description="Sound effects from: unboxing, drone, click, whoosh, crowd, kitchen, none")
-                )
-            }
-        )
+    schema = types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
+            "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
+            "sfx_list": types.Schema(
+                type=types.Type.ARRAY,
+                items=types.Schema(type=types.Type.STRING,
+                    description="Sound effects from: unboxing, drone, click, whoosh, crowd, kitchen, none")
+            )
+        }
+    )
 
     if is_video:
         # For large videos, we MUST use the File API to upload rather than inline memory payload
