@@ -530,21 +530,35 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 abs_srt_path = os.path.abspath(srt_path).replace("\\", "/").replace(":", "\\:")
                 
                 # C. Prepare FFmpeg Filter Complex for Segments
+                source_duration = get_video_duration(file_path)
                 segments = clip_data.get('cut_segments', [{'start_time': 0, 'end_time': 20}])
                 filter_parts = []
                 concat_inputs = []
+                valid_segments_count = 0
                 
                 for i, seg in enumerate(segments):
                     start = parse_time_to_sec(seg.get('start_time', 0))
                     end = parse_time_to_sec(seg.get('end_time', 5))
-                    # Fallback if start >= end to avoid ffmpeg crash
-                    if start >= end: end = start + 3 
-                    filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{i}]")
-                    concat_inputs.append(f"[v{i}]")
+                    
+                    # Clamp to actual video duration to prevent ffmpeg crashing or empty video
+                    start = max(0.0, min(start, source_duration - 0.5))
+                    end = max(start + 0.5, min(end, source_duration))
+                    
+                    if start >= source_duration - 0.2:
+                        continue # Skip this broken segment
+
+                    filter_parts.append(f"[0:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[v{valid_segments_count}]")
+                    concat_inputs.append(f"[v{valid_segments_count}]")
+                    valid_segments_count += 1
+                    
+                if valid_segments_count == 0:
+                    fallback_end = min(5.0, source_duration)
+                    filter_parts.append(f"[0:v]trim=start=0:end={fallback_end},setpts=PTS-STARTPTS[v0]")
+                    concat_inputs.append("[v0]")
+                    valid_segments_count = 1
                     
                 concat_str = "".join(concat_inputs)
-                n_segments = len(segments)
-                filter_parts.append(f"{concat_str}concat=n={n_segments}:v=1:a=0[vcat]")
+                filter_parts.append(f"{concat_str}concat=n={valid_segments_count}:v=1:a=0[vcat]")
                 
                 # Apply scaling/cropping based on aspect ratio
                 aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
