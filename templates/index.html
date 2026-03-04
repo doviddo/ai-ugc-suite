@@ -499,12 +499,21 @@
         </select>
       </div>
 
-      <div class="card" id="aspectRatioCard">
-        <label>Video Format (Aspect Ratio)</label>
-        <select id="aspectRatioSelect">
-          <option value="vertical">📱 Vertical (9:16) - TikTok / Reels / Shorts</option>
-          <option value="horizontal">📺 Horizontal (16:9) - YouTube / Feed</option>
-        </select>
+      <div class="card" id="aspectRatioCard" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div>
+          <label>Video Format (Aspect Ratio)</label>
+          <select id="aspectRatioSelect">
+            <option value="vertical">📱 Vertical (9:16) - TikTok / Reels / Shorts</option>
+            <option value="horizontal">📺 Horizontal (16:9) - YouTube / Feed</option>
+          </select>
+        </div>
+        <div id="clipCountContainer" class="hidden">
+          <label style="margin-bottom: 0.2rem;">Number of Clips to Extract: <span id="clipCountVal"
+              style="color:var(--accent); font-size:1.1rem;">10</span></label>
+          <input type="range" id="clipCountInput" min="1" max="10" value="10"
+            oninput="document.getElementById('clipCountVal').innerText = this.value"
+            style="width:100%; cursor:pointer;">
+        </div>
       </div>
 
       <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
@@ -627,6 +636,12 @@
       }
 
       document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : (mode === 'dubbing' ? '🎬' : '✂️');
+
+      if (mode === 'clipper') {
+        if (document.getElementById('clipCountContainer')) document.getElementById('clipCountContainer').classList.remove('hidden');
+      } else {
+        if (document.getElementById('clipCountContainer')) document.getElementById('clipCountContainer').classList.add('hidden');
+      }
       clearFileInput();
     }
 
@@ -684,6 +699,9 @@
       formData.append('product_context', context);
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
+      if (document.getElementById('clipCountInput')) {
+        formData.append('clip_count', document.getElementById('clipCountInput').value);
+      }
 
       try {
         const resp = await fetch('/analyze', { method: 'POST', body: formData });

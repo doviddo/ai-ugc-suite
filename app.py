@@ -85,10 +85,16 @@ def get_mime_type(filepath):
     return mime_map.get(ext, 'application/octet-stream')
 
 
-def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=None):
-    """Send file to Gemini for creative concept generation using official SDK."""
-    mime_type = get_mime_type(file_path)
-    is_video = mime_type.startswith('video')
+def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=None, clip_count=10):
+    """
+    Sends the file (image or video) and marketing context to Gemini 1.5 Flash.
+    Forces JSON output with response_schema for reliability.
+    """
+    prompt = ""
+    is_video = bool(video_duration_sec)
+    mime_type = "video/mp4" if is_video else "image/jpeg"
+
+    clip_count = max(1, min(10, int(clip_count))) # clamp between 1-10
 
     if mode == 'dubbing':
         duration_hint = f"{int(video_duration_sec)} seconds" if video_duration_sec else "15 seconds"
@@ -113,17 +119,17 @@ REQUIREMENTS:
         prompt = f"""You are a professional UGC video editor and marketer for the German market.
 
 Analyze this long video footage and the product information below.
-Your task is to create a complete content plan of 10 DISTINCT, fast-paced, 20-25 second UGC promotional videos from this single footage. 
-Each of the 10 videos should focus on a slightly different angle, feature, or emotional hook based on the product context.
+Your task is to create a complete content plan of {clip_count} DISTINCT, fast-paced, 20-25 second UGC promotional videos from this single footage. 
+Each of the {clip_count} videos should focus on a slightly different angle, feature, or emotional hook based on the product context.
 
 PRODUCT CONTEXT / MARKETING INFO:
 {product_context}
 
-REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
+REQUIREMENTS FOR EACH OF THE {clip_count} VIDEOS:
 1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video. Total combined duration of segments for one clip should be 20-25 seconds.
 2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
-4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips.
+4. Return ONLY a valid JSON object matching exactly this structure with an array of {clip_count} clips.
 CRITICAL JSON RULES:
 - ABSOLUTELY NO internal quotation marks! You are STRICTLY FORBIDDEN from using any double quotes (") or single quotes (') inside the actual text values.
 - Do not use newlines in text. 
@@ -166,7 +172,7 @@ REQUIREMENTS:
             properties={
                 "clips": types.Schema(
                     type=types.Type.ARRAY,
-                    description="List of 10 distinct video clip concepts",
+                    description=f"List of {clip_count} distinct video clip concepts",
                     items=types.Schema(
                         type=types.Type.OBJECT,
                         properties={
@@ -621,6 +627,11 @@ def analyze():
     mode = request.form.get('mode', '').strip()  # Mode must come from frontend!
     aspect_ratio = request.form.get('aspect_ratio', 'vertical').strip()
     video_url = request.form.get('video_url', '').strip()
+    
+    try:
+        clip_count = int(request.form.get('clip_count', 10))
+    except (ValueError, TypeError):
+        clip_count = 10
 
     file = request.files.get('file')
 
@@ -655,7 +666,7 @@ def analyze():
         video_duration_sec = get_video_duration(save_path)
 
     try:
-        creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec)
+        creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec, clip_count)
     except Exception as e:
         os.remove(save_path)
         return jsonify({'error': f'Gemini analysis failed: {str(e)}'}), 500
