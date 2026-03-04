@@ -237,7 +237,8 @@ def generate_tts(voiceover_script, voice_name=None):
     try:
         audio_b64 = data['candidates'][0]['content']['parts'][0]['inlineData']['data']
     except (KeyError, IndexError, TypeError) as e:
-        raise RuntimeError(f"TTS response missing audio data: {e}. Response: {data}")
+        safe_text = voiceover_script[:50] if voiceover_script else "EMPTY"
+        raise RuntimeError(f"TTS response missing audio data for text '{safe_text}...'. Error: {e}. Response: {data}")
 
     return base64.b64decode(audio_b64)
 
