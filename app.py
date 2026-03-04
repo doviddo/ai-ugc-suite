@@ -460,6 +460,7 @@ def apply_outro_and_cover(input_path, output_path, cover_path):
     duration = get_video_duration(input_path)
     subprocess.run([
         'ffmpeg', '-y', '-ss', str(min(1.0, duration/2)), '-i', input_path,
+        '-vf', "drawtext=text='www.techflug.de':fontcolor=white:fontsize=50:borderw=3:bordercolor=black:x=(w-text_w)/2:y=60",
         '-vframes', '1', '-q:v', '5', cover_path
     ], capture_output=True)
     
