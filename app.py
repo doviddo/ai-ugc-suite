@@ -118,17 +118,18 @@ REQUIREMENTS:
     
     elif mode == 'clipper':
         clip_count = 1 # Force 1 clip based on user prompt directly
-        prompt = f"""You are a professional UGC video editor and marketer for the German market.
+        prompt = f"""You are a professional UGC video editor and storyteller for the German market.
 
-Analyze this long video footage and the prompt below.
-Your task is to create 1 fast-paced, 20-25 second UGC promotional video from this single footage that EXACTLY matches the prompt below.
+🧠 BRAINSTORM MODE ACTIVATED.
+Analyze this vertical video footage and the prompt below.
+Your task is to create 1 fast-paced, 20-25 second UGC promotional video from this single footage.
 
 USER PROMPT / MARKETING INFO:
 {product_context}
 
 REQUIREMENTS FOR THIS VIDEO:
-1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video that perfectly match the prompt. Total combined duration of segments should be 20-25 seconds.
-2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
+1. Select 4 to 6 of the most visually interesting and dynamic moments from the video. Total combined duration of segments should be 20-25 seconds.
+2. NARRATE THE ACTION: The German voiceover must explicitly and enthusiastically DESCRIBE what is happening in the selected moments on screen! Make it sound like an exciting, interesting highlight reel (informal "du"-style). It must fit the 20-25s length when spoken.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
 4. Return ONLY a valid JSON object matching exactly this structure.
 CRITICAL JSON RULES:
@@ -600,7 +601,7 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                     '-filter_complex', filter_complex,
                     '-map', '[vout]',
                     '-map', '[aout]',
-                    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+                    '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
                     '-c:a', 'aac', '-b:a', '128k',
                     '-shortest',
                     output_path
