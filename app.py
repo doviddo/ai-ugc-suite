@@ -649,7 +649,7 @@ def analyze():
         if not os.path.exists(save_path):
             return jsonify({'error': 'Selected video not found in library'}), 404
     elif video_url:
-        save_path = f"temp/{job_id}_downloaded.mp4"
+        save_path = f"library/{job_id}_downloaded.mp4"
         ydl_opts = {
             'outtmpl': save_path,
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
@@ -665,7 +665,7 @@ def analyze():
         filename = secure_filename(file.filename)
         if not filename:
             return jsonify({'error': 'Invalid filename'}), 400
-        save_path = f"temp/{job_id}_{filename}"
+        save_path = f"library/{filename}"
         file.save(save_path)
 
     # For video modes — measure duration
