@@ -125,8 +125,8 @@ REQUIREMENTS FOR EACH OF THE 10 VIDEOS:
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
 4. Return ONLY a valid JSON object matching exactly this structure with an array of 10 clips.
 CRITICAL JSON RULES:
-- DO NOT use double quotes (") inside any string values. Use single quotes (') instead.
-- DO NOT use actual line breaks inside string values. Use \\n instead.
+- ABSOLUTELY NO internal quotation marks! You are STRICTLY FORBIDDEN from using any double quotes (") or single quotes (') inside the actual text values.
+- Do not use newlines in text. 
 - The output MUST be strictly valid JSON without any markdown formatting.
 
 {{
@@ -205,8 +205,13 @@ REQUIREMENTS:
             raw_text = raw_text[3:]
         if raw_text.endswith('```'):
             raw_text = raw_text[:-3]
+
+        # Try to fix common unescaped quote issues before parsing
+        import re
+        # This replaces quotes inside string values but it's risky, so we rely on strict=False
+        # which permits unescaped newlines and control characters at least.
             
-        return json.loads(raw_text.strip())
+        return json.loads(raw_text.strip(), strict=False)
         
     except json.JSONDecodeError as e:
         print(f"Gemini raw failed response: {response.text}")
