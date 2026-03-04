@@ -436,8 +436,8 @@
 <body>
   <div class="container">
     <header>
-      <div class="logo">🎬 AI UGC Suite</div>
-      <p>Generate professional German-language UGC video content with AI</p>
+      <div class="logo">🎬 AI Clipper Suite *(Thriller Mode)*</div>
+      <p>Convert long videos into psychological thriller highlights</p>
     </header>
 
     <!-- Step indicator -->
@@ -461,9 +461,7 @@
     <!-- STEP 1: Upload -->
     <div id="panel-upload">
       <div class="mode-tabs">
-        <button class="mode-tab active" onclick="setMode('creative')" id="tab-creative">📸 Photo → Full Video</button>
-        <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
-        <button class="mode-tab" onclick="setMode('clipper')" id="tab-clipper"
+        <button class="mode-tab active" onclick="setMode('clipper')" id="tab-clipper"
           style="background: linear-gradient(135deg, #10b981, #059669); color: white;">✂️ Smart Clipper</button>
       </div>
 
@@ -603,7 +601,7 @@
 
   <script>
     let currentJobId = null;
-    let currentMode = 'creative';
+    let currentMode = 'clipper';
     let pollInterval = null;
 
     const steps = {
@@ -637,42 +635,19 @@
     }
 
     // Call loadLibrary on startup
-    document.addEventListener('DOMContentLoaded', loadLibrary);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLibrary();
+      setMode('clipper');
+    });
 
     function setMode(mode) {
-      currentMode = mode;
-      document.getElementById('tab-creative').classList.toggle('active', mode === 'creative');
-      document.getElementById('tab-dubbing').classList.toggle('active', mode === 'dubbing');
-      document.getElementById('tab-clipper').classList.remove('active');
-
-      // Clipper styling
-      if (mode === 'clipper') {
-        document.getElementById('tab-clipper').style.boxShadow = "0 4px 15px rgba(16, 185, 129, 0.4)";
-      } else {
-        document.getElementById('tab-clipper').style.boxShadow = "none";
-      }
-
-      document.getElementById('fileInput').accept = mode === 'creative' ? 'image/*' : 'video/*';
-      if (mode === 'creative') {
-        dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
-        document.getElementById('urlInputContainer').classList.add('hidden');
-      } else if (mode === 'dubbing') {
-        dropText.textContent = 'Drop your short video here (MP4, MOV, AVI, WEBM)';
-        document.getElementById('urlInputContainer').classList.remove('hidden');
-      } else {
-        dropText.textContent = 'Drop your LONG video here to extract highlights (MP4, MOV, AVI)';
-        document.getElementById('urlInputContainer').classList.remove('hidden');
-      }
-
-      document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : (mode === 'dubbing' ? '🎬' : '✂️');
-
-      if (mode === 'clipper') {
-        document.getElementById('libraryCard').classList.remove('hidden');
-      } else if (mode === 'dubbing') {
-        document.getElementById('libraryCard').classList.remove('hidden');
-      } else {
-        document.getElementById('libraryCard').classList.add('hidden');
-      }
+      currentMode = 'clipper';
+      document.getElementById('tab-clipper').style.boxShadow = "0 4px 15px rgba(16, 185, 129, 0.4)";
+      document.getElementById('fileInput').accept = 'video/*';
+      dropText.textContent = 'Drop your LONG video here to extract highlights (MP4, MOV, AVI)';
+      document.getElementById('urlInputContainer').classList.remove('hidden');
+      document.getElementById('dropIcon').textContent = '✂️';
+      document.getElementById('libraryCard').classList.remove('hidden');
       clearFileInput();
     }
 
