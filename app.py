@@ -159,6 +159,47 @@ REQUIREMENTS:
   2) "voiceover_script" - an enthusiastic script ENTIRELY IN GERMAN, exactly 8 seconds when spoken at normal pace, first person, informal "du"-style. Highlight the key benefit directly. Short, punchy, memorable.
 - voiceover_script MUST be in German only. Keep it SHORT — 8 seconds max."""
 
+    # Define strict JSON schemas based on mode to guarantee zero parsing errors
+    if mode == 'clipper':
+        schema = types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "clips": types.Schema(
+                    type=types.Type.ARRAY,
+                    description="List of 10 distinct video clip concepts",
+                    items=types.Schema(
+                        type=types.Type.OBJECT,
+                        properties={
+                            "theme": types.Schema(type=types.Type.STRING),
+                            "cut_segments": types.Schema(
+                                type=types.Type.ARRAY,
+                                items=types.Schema(
+                                    type=types.Type.OBJECT,
+                                    properties={
+                                        "start_time": types.Schema(type=types.Type.NUMBER, description="Start time in seconds"),
+                                        "end_time": types.Schema(type=types.Type.NUMBER, description="End time in seconds")
+                                    }
+                                )
+                            ),
+                            "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script"),
+                            "subtitles": types.Schema(
+                                type=types.Type.ARRAY,
+                                items=types.Schema(type=types.Type.STRING, description="Short phrases for subtitles")
+                            )
+                        }
+                    )
+                )
+            }
+        )
+    else:
+        schema = types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "video_prompt": types.Schema(type=types.Type.STRING, description="Prompt for Google Veo 3"),
+                "voiceover_script": types.Schema(type=types.Type.STRING, description="German voiceover script")
+            }
+        )
+
     if is_video:
         # For large videos, we MUST use the File API to upload rather than inline memory payload
         uploaded_file = gemini_client.files.upload(file=file_path)
@@ -185,7 +226,9 @@ REQUIREMENTS:
         model=ANALYSIS_MODEL,
         contents=[prompt, media_content],
         config=types.GenerateContentConfig(
-            response_mime_type='application/json'
+            response_mime_type='application/json',
+            response_schema=schema,
+            temperature=0.7
         )
     )
 
