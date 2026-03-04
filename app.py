@@ -571,6 +571,7 @@ def analyze():
             'outtmpl': save_path,
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'noplaylist': True,
+            'extractor_args': {'youtube': ['player_client=android', 'player_skip=web']}
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
