@@ -385,9 +385,17 @@ def generate_veo3_video(video_prompt):
     raise TimeoutError("Veo 3 video generation timed out after 5 minutes")
 
 
-def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
-    """Merge audio and video with FFmpeg. Audio fits the video via -shortest."""
+def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, aspect_ratio='vertical'):
+    """Merge audio and video with FFmpeg, apply scale/crop to match chosen aspect ratio."""
     wav_path = audio_raw_path.replace('.raw', '.wav')
+
+    # Determine target resolution
+    if aspect_ratio == 'horizontal':
+        scale_crop = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+    elif aspect_ratio == 'fb_feed':
+        scale_crop = "scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350"
+    else:  # vertical (default)
+        scale_crop = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
 
     # Try s16le first (little-endian), fallback to s16be (big-endian)
     converted = False
@@ -408,15 +416,16 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration):
     if not converted:
         raise RuntimeError('Failed to convert TTS audio to WAV')
 
-    # Simple merge: trim to shortest (video or audio)
     cmd = [
         'ffmpeg', '-y',
         '-i', video_path,
         '-i', wav_path,
-        '-c:v', 'copy',
-        '-c:a', 'aac', '-b:a', '128k',
-        '-map', '0:v:0',
+        '-filter_complex',
+        f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout]',
+        '-map', '[vout]',
         '-map', '1:a:0',
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-b:a', '128k',
         '-shortest',
         output_path
     ]
@@ -482,7 +491,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             
             jobs[job_id]['status'] = 'merging'
             output_path = f"output/{job_id}_final.mp4"
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path))
+            aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
+            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio)
 
         elif mode == 'dubbing':
             jobs[job_id]['status'] = 'processing_video'
@@ -493,7 +503,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
 
             jobs[job_id]['status'] = 'merging'
             output_path = f"output/{job_id}_final.mp4"
-            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path))
+            aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
+            merge_audio_video(video_path, audio_raw_path, output_path, get_video_duration(video_path), aspect_ratio)
             
         elif mode == 'clipper':
             creative_data = jobs[job_id]['creative_data']
@@ -572,6 +583,8 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
                 aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
                 if aspect_ratio == 'horizontal':
                     scale_filter = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+                elif aspect_ratio == 'fb_feed':
+                    scale_filter = "scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350"
                 else:
                     scale_filter = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
                 
