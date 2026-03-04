@@ -463,7 +463,6 @@
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="setMode('creative')" id="tab-creative">📸 Photo → Full Video</button>
         <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
-        <button class="mode-tab" onclick="setMode('clipper')" id="tab-clipper">✂️ Video → Smart Clipper</button>
       </div>
 
       <div class="card" id="libraryCard">
@@ -963,7 +962,7 @@
         img.style.marginBottom = "1rem";
         img.style.aspectRatio = "9/16";
         img.style.objectFit = "cover";
-        
+
         const dlinkImg = document.createElement('a');
         dlinkImg.href = coverUrl;
         dlinkImg.download = coverUrl.split('/').pop();
