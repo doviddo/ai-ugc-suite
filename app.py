@@ -462,18 +462,11 @@ def apply_outro_and_cover(input_path, output_path, cover_path):
         'ffmpeg', '-y', '-ss', str(min(1.0, duration/2)), '-i', input_path,
         '-vframes', '1', '-q:v', '5', cover_path
     ], capture_output=True)
-    abs_srt_path = os.path.abspath("temp/outro.srt").replace("\\", "/").replace(":", "\\:")
-    def format_time(seconds):
-        h = int(seconds // 3600)
-        m = int((seconds % 3600) // 60)
-        s = int(seconds % 60)
-        ms = int((seconds % 1) * 1000)
-        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-    start_str = format_time(duration)
-    end_str = format_time(duration + 2.0)
-    with open("temp/outro.srt", 'w', encoding='utf-8') as f:
-        f.write(f"1\n{start_str} --> {end_str}\nwww.techflug.de\n")
-    filter_complex = f"[0:v]tpad=stop_mode=clone:stop_duration=2,subtitles={abs_srt_path}:force_style='FontSize=40,PrimaryColour=&H00FFFFFF,OutlineColour=&H40000000,BorderStyle=1,Outline=1,Shadow=1,Alignment=5'[vout];[0:a]apad=pad_dur=2[aout]"
+    
+    # tpad extends the video by 2 seconds with the last frame
+    # drawtext smoothly adds the URL only during those last 2 seconds (gt(t, duration))
+    filter_complex = f"[0:v]tpad=stop_mode=clone:stop_duration=2,drawtext=text='www.techflug.de':fontcolor=white:fontsize=65:borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2:enable='gt(t,{duration})'[vout];[0:a]apad=pad_dur=2[aout]"
+    
     res = subprocess.run([
         'ffmpeg', '-y', '-i', input_path, '-filter_complex', filter_complex,
         '-map', '[vout]', '-map', '[aout]',
