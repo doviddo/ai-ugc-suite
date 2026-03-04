@@ -139,7 +139,6 @@ REQUIREMENTS:
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
     
     elif mode == 'clipper':
-        clip_count = 1 # Force 1 clip based on user prompt directly
         prompt = f"""You are a top-tier TikTok creator and storyteller specializing in psychological thriller movie recaps for the Russian market.
 
 🧠 PSYCHOLOGICAL THRILLER MODE ACTIVATED.
@@ -851,13 +850,17 @@ def status(job_id):
 @app.route('/download/<filename>')
 def download(filename):
     """Download the final video."""
-    return send_from_directory('output', filename, as_attachment=True)
+    out_dir = os.path.abspath('output')
+    if not os.path.exists(os.path.join(out_dir, filename)):
+        return jsonify({'error': f'File not found: {filename}'}), 404
+    return send_from_directory(out_dir, filename, as_attachment=True)
 
 @app.route('/api/library', methods=['GET'])
 def list_library():
     """List videos available in the library folder."""
-    if not os.path.exists("library"): return jsonify([])
-    files = [f for f in os.listdir("library") if f.endswith(('.mp4', '.mov', '.avi', '.webm'))]
+    lib_dir = os.path.abspath("library")
+    if not os.path.exists(lib_dir): return jsonify([])
+    files = [f for f in os.listdir(lib_dir) if f.endswith(('.mp4', '.mov', '.avi', '.webm'))]
     return jsonify(files)
 
 @app.route('/api/upload_to_library', methods=['POST'])
@@ -867,7 +870,9 @@ def upload_to_library():
     if not file: return jsonify({'error': 'No file'}), 400
     filename = secure_filename(file.filename)
     if not filename: return jsonify({'error': 'Invalid filename'}), 400
-    save_path = f"library/{filename}"
+    lib_dir = os.path.abspath("library")
+    os.makedirs(lib_dir, exist_ok=True)
+    save_path = os.path.join(lib_dir, filename)
     file.save(save_path)
     return jsonify({'success': True, 'filename': filename})
 
