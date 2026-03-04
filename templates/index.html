@@ -467,8 +467,20 @@
           style="background: linear-gradient(135deg, #10b981, #059669); color: white;">✂️ Smart Clipper</button>
       </div>
 
-      <div class="card">
-        <label>Upload File OR Paste Link</label>
+      <div class="card" id="libraryCard">
+        <label>Select Video from Server Library</label>
+        <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
+          <select id="videoLibrarySelect" style="flex:1;">
+            <option value="">-- Upload a new video below or select from library --</option>
+          </select>
+          <button class="btn"
+            style="padding:0.5rem 1rem; border:1px solid var(--border); background:var(--surface2); width:auto;"
+            onclick="loadLibrary()" title="Refresh Library" type="button">🔄</button>
+        </div>
+      </div>
+
+      <div class="card" id="uploadCard">
+        <label>Or Upload New File / Paste Link</label>
 
         <div id="urlInputContainer" class="hidden" style="margin-bottom: 1.5rem;">
           <input type="url" id="videoUrlInput" placeholder="Paste YouTube, Google Drive, or MP4 link here...">
@@ -508,11 +520,6 @@
           </select>
         </div>
         <div id="clipCountContainer" class="hidden">
-          <label style="margin-bottom: 0.2rem;">Number of Clips to Extract: <span id="clipCountVal"
-              style="color:var(--accent); font-size:1.1rem;">10</span></label>
-          <input type="range" id="clipCountInput" min="1" max="10" value="10"
-            oninput="document.getElementById('clipCountVal').innerText = this.value"
-            style="width:100%; cursor:pointer;">
         </div>
       </div>
 
@@ -610,6 +617,28 @@
       }
     };
 
+    async function loadLibrary() {
+      try {
+        const resp = await fetch('/api/library');
+        const files = await resp.json();
+        const sel = document.getElementById('videoLibrarySelect');
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">-- Upload a new video below or select from library --</option>';
+        files.forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f;
+          opt.textContent = f;
+          sel.appendChild(opt);
+        });
+        if (files.includes(currentVal)) {
+          sel.value = currentVal;
+        }
+      } catch (e) { }
+    }
+
+    // Call loadLibrary on startup
+    document.addEventListener('DOMContentLoaded', loadLibrary);
+
     function setMode(mode) {
       currentMode = mode;
       document.getElementById('tab-creative').classList.toggle('active', mode === 'creative');
@@ -638,9 +667,11 @@
       document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : (mode === 'dubbing' ? '🎬' : '✂️');
 
       if (mode === 'clipper') {
-        if (document.getElementById('clipCountContainer')) document.getElementById('clipCountContainer').classList.remove('hidden');
+        document.getElementById('libraryCard').classList.remove('hidden');
+      } else if (mode === 'dubbing') {
+        document.getElementById('libraryCard').classList.remove('hidden');
       } else {
-        if (document.getElementById('clipCountContainer')) document.getElementById('clipCountContainer').classList.add('hidden');
+        document.getElementById('libraryCard').classList.add('hidden');
       }
       clearFileInput();
     }
@@ -679,12 +710,15 @@
       const fileInput = document.getElementById('fileInput');
       const videoUrlInput = document.getElementById('videoUrlInput');
       const context = document.getElementById('productContext').value.trim();
+      const videoLibrarySelect = document.getElementById('videoLibrarySelect');
+      const selectedLibVideo = videoLibrarySelect ? videoLibrarySelect.value : '';
 
+      const hasLibVideo = selectedLibVideo !== '';
       const hasFile = fileInput.files && fileInput.files.length > 0;
       const hasUrl = videoUrlInput && videoUrlInput.value.trim() !== '';
 
       if (currentMode === 'creative' && !hasFile) { alert('Please upload a photo first.'); return; }
-      if (currentMode !== 'creative' && !hasFile && !hasUrl) { alert('Please upload a file or paste a video link.'); return; }
+      if (currentMode !== 'creative' && !hasFile && !hasUrl && !hasLibVideo) { alert('Please upload a file, paste a link, or select from library.'); return; }
 
       document.getElementById('analyzeBtn').disabled = true;
       document.getElementById('analyzeStatus').classList.remove('hidden');
@@ -699,8 +733,8 @@
       formData.append('product_context', context);
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
-      if (document.getElementById('clipCountInput')) {
-        formData.append('clip_count', document.getElementById('clipCountInput').value);
+      if (selectedLibVideo) {
+        formData.append('selected_video', selectedLibVideo);
       }
 
       try {
@@ -714,16 +748,16 @@
 
         // Populate review panel
         if (data.mode === 'clipper') {
-          let previewText = "✅ ИИ успешно создал сценарии для вариантов клипов!\n\n";
+          let previewText = "✅ ИИ сгенерировал сценарий для вашего видео:\n\n";
           if (data.creative_data.clips) {
             data.creative_data.clips.forEach((c, i) => {
-              previewText += `🎬 Вариант ${i + 1} [${c.theme}]:\n${c.voiceover_script}\n\n`;
+              previewText += `${c.theme ? 'О чём: ' + c.theme + '\n' : ''}${c.voiceover_script}\n\n`;
             });
           } else {
-            previewText += "[Сценарии готовы, просто нажмите Generate]";
+            previewText += "[Сценарий готов, нажмите Generate]";
           }
           document.getElementById('voiceoverEditor').value = previewText;
-          document.getElementById('voiceoverEditor').readOnly = true; // Not editable for 10 clips at once yet
+          document.getElementById('voiceoverEditor').readOnly = false; // Now editable for 1 clip
         } else {
           document.getElementById('voiceoverEditor').value = data.creative_data.voiceover_script || '';
           document.getElementById('voiceoverEditor').readOnly = false;

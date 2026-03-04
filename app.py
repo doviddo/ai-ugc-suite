@@ -33,8 +33,9 @@ gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 ALLOWED_PHOTO_EXT = {'png', 'jpg', 'jpeg', 'webp'}
 ALLOWED_VIDEO_EXT = {'mp4', 'mov', 'avi', 'webm'}
 
-os.makedirs('temp', exist_ok=True)
-os.makedirs('output', exist_ok=True)
+os.makedirs("temp", exist_ok=True)
+os.makedirs("output", exist_ok=True)
+os.makedirs("library", exist_ok=True)
 os.makedirs('assets', exist_ok=True)
 
 BG_MUSIC_PATH = 'assets/bg_music.mp3'
@@ -116,20 +117,20 @@ REQUIREMENTS:
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
     
     elif mode == 'clipper':
+        clip_count = 1 # Force 1 clip based on user prompt directly
         prompt = f"""You are a professional UGC video editor and marketer for the German market.
 
-Analyze this long video footage and the product information below.
-Your task is to create a complete content plan of {clip_count} DISTINCT, fast-paced, 20-25 second UGC promotional videos from this single footage. 
-Each of the {clip_count} videos should focus on a slightly different angle, feature, or emotional hook based on the product context.
+Analyze this long video footage and the prompt below.
+Your task is to create 1 fast-paced, 20-25 second UGC promotional video from this single footage that EXACTLY matches the prompt below.
 
-PRODUCT CONTEXT / MARKETING INFO:
+USER PROMPT / MARKETING INFO:
 {product_context}
 
-REQUIREMENTS FOR EACH OF THE {clip_count} VIDEOS:
-1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video. Total combined duration of segments for one clip should be 20-25 seconds.
+REQUIREMENTS FOR THIS VIDEO:
+1. Select 4 to 6 of the most dynamic, visually appealing segments from the long video that perfectly match the prompt. Total combined duration of segments should be 20-25 seconds.
 2. Write a highly engaging German voiceover script (informal "du"-style). It must fit the 20-25s length when spoken. The script MUST end with a strong Call to Action (CTA) in the last 4 seconds to buy/click.
 3. Split the voiceover script into short phrases (3-6 words each) suitable for large on-screen subtitles.
-4. Return ONLY a valid JSON object matching exactly this structure with an array of {clip_count} clips.
+4. Return ONLY a valid JSON object matching exactly this structure.
 CRITICAL JSON RULES:
 - ABSOLUTELY NO internal quotation marks! You are STRICTLY FORBIDDEN from using any double quotes (") or single quotes (') inside the actual text values.
 - Do not use newlines in text. 
@@ -138,10 +139,10 @@ CRITICAL JSON RULES:
 {{
   "clips": [
     {{
-      "theme": "Brief description of the angle (e.g. Unboxing, Durability test)",
+      "theme": "Brief description of the angle based on prompt",
       "cut_segments": [
-        {{"start_time": 1.5, "end_time": 4.0}},
-        {{"start_time": 12.0, "end_time": 15.5}}
+        {{"start_time": "1.5", "end_time": "4.0"}},
+        {{"start_time": "12.0", "end_time": "15.5"}}
       ],
       "voiceover_script": "full german script without quotes",
       "subtitles": ["phrase 1", "phrase 2"]
@@ -635,14 +636,19 @@ def analyze():
     except (ValueError, TypeError):
         clip_count = 10
 
+    selected_video = request.form.get('selected_video', '').strip()
     file = request.files.get('file')
 
-    if not file and not video_url:
-        return jsonify({'error': 'Please provide either a file or a video URL'}), 400
+    if not file and not video_url and not selected_video:
+        return jsonify({'error': 'Please provide either a file, video URL, or select from library'}), 400
 
     job_id = str(uuid.uuid4())
     
-    if video_url:
+    if selected_video:
+        save_path = f"library/{secure_filename(selected_video)}"
+        if not os.path.exists(save_path):
+            return jsonify({'error': 'Selected video not found in library'}), 404
+    elif video_url:
         save_path = f"temp/{job_id}_downloaded.mp4"
         ydl_opts = {
             'outtmpl': save_path,
@@ -670,7 +676,9 @@ def analyze():
     try:
         creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec, clip_count)
     except Exception as e:
-        os.remove(save_path)
+        if not selected_video:
+            try: os.remove(save_path)
+            except: pass
         return jsonify({'error': f'Gemini analysis failed: {str(e)}'}), 500
 
     jobs[job_id] = {
@@ -748,6 +756,23 @@ def download(filename):
     """Download the final video."""
     return send_from_directory('output', filename, as_attachment=True)
 
+@app.route('/api/library', methods=['GET'])
+def list_library():
+    """List videos available in the library folder."""
+    if not os.path.exists("library"): return jsonify([])
+    files = [f for f in os.listdir("library") if f.endswith(('.mp4', '.mov', '.avi', '.webm'))]
+    return jsonify(files)
+
+@app.route('/api/upload_to_library', methods=['POST'])
+def upload_to_library():
+    """Upload a video directly to the persistent library."""
+    file = request.files.get('file')
+    if not file: return jsonify({'error': 'No file'}), 400
+    filename = secure_filename(file.filename)
+    if not filename: return jsonify({'error': 'Invalid filename'}), 400
+    save_path = f"library/{filename}"
+    file.save(save_path)
+    return jsonify({'success': True, 'filename': filename})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
