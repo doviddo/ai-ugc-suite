@@ -458,14 +458,13 @@ def parse_time_to_sec(val):
 
 def apply_outro_and_cover(input_path, output_path, cover_path):
     duration = get_video_duration(input_path)
+    # Generate cover WITHOUT text
     subprocess.run([
         'ffmpeg', '-y', '-ss', str(min(1.0, duration/2)), '-i', input_path,
-        '-vf', "drawtext=text='www.techflug.de':fontcolor=white:fontsize=50:borderw=3:bordercolor=black:x=(w-text_w)/2:y=60",
         '-vframes', '1', '-q:v', '5', cover_path
     ], capture_output=True)
     
-    # tpad extends the video by 2 seconds with the last frame
-    # drawtext smoothly adds the URL only during those last 2 seconds (gt(t, duration))
+    # Keep URL in the outro only
     filter_complex = f"[0:v]tpad=stop_mode=clone:stop_duration=2,drawtext=text='www.techflug.de':fontcolor=white:fontsize=65:borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2:enable='gt(t,{duration})'[vout];[0:a]apad=pad_dur=2[aout]"
     
     res = subprocess.run([
