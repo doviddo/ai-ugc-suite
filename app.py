@@ -427,10 +427,10 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, a
     if input_count > 1:
         audio_parts.append(f'{mix_inputs}amix=inputs={input_count}:duration=first:dropout_transition=0[aout]')
         audio_filter = ';'.join(audio_parts)
-        filter_complex = f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout];{audio_filter}'
+        filter_complex = f'[0:v]{scale_crop}[vout];{audio_filter}'
         cmd += ['-filter_complex', filter_complex, '-map', '[vout]', '-map', '[aout]']
     else:
-        filter_complex = f'[0:v]{scale_crop},tpad=stop_mode=clone:stop_duration=5[vout]'
+        filter_complex = f'[0:v]{scale_crop}[vout]'
         cmd += ['-filter_complex', filter_complex, '-map', '[vout]', '-map', '1:a:0']
 
     cmd += ['-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
@@ -466,46 +466,27 @@ def apply_outro_and_cover(input_path, output_path, cover_path):
         '-vframes', '1', '-q:v', '5', cover_path
     ], capture_output=True)
     
-    # Keep URL in the outro only
-    filter_complex = f"[0:v]tpad=stop_mode=clone:stop_duration=2,drawtext=text='www.techflug.de':fontcolor=white:fontsize=65:borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2:enable='gt(t,{duration})'[vout];[0:a]apad=pad_dur=2[aout]"
-    
-    res = subprocess.run([
-        'ffmpeg', '-y', '-i', input_path, '-filter_complex', filter_complex,
-        '-map', '[vout]', '-map', '[aout]',
-        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-b:a', '128k', output_path
-    ], capture_output=True, text=True)
-    if res.returncode != 0:
-        raise RuntimeError(f"FFmpeg Outro Error: {res.stderr[-1000:]}")
+    # Do not extend the video or audio, just copy the file
+    import shutil
+    shutil.copyfile(input_path, output_path)
 
 def process_job(job_id, mode, file_path, product_context, voiceover_script=None, video_prompt=None, voice=None):
     """Background thread to process the full video generation pipeline."""
     try:
         if mode != 'clipper':
             jobs[job_id]['status'] = 'generating_audio'
-            # 1. Generate Voice
+            # 1. Skip TTS, generate a short silent audio instead
             audio_raw_path = f"temp/{job_id}_audio.raw"
-            audio_data = generate_tts(voiceover_script, voice)
-            with open(audio_raw_path, 'wb') as f:
-                f.write(audio_data)
-
-            # 2. Convert Voice to WAV right away to get duration
             wav_path = audio_raw_path.replace('.raw', '.wav')
             
-            converted = False
-            for fmt in ['s16le', 's16be']:
-                try:
-                    res = subprocess.run([
-                        'ffmpeg', '-y', '-f', fmt, '-ar', '24000', '-ac', '1',
-                        '-i', audio_raw_path, wav_path
-                    ], capture_output=True, timeout=60)
-                    if res.returncode == 0:
-                        converted = True
-                        break
-                except Exception:
-                    continue
-            if not converted:
-                raise RuntimeError('Failed to convert TTS audio to WAV')
+            # just write a dummy raw file
+            with open(audio_raw_path, 'wb') as f:
+                f.write(b'\x00' * 48000 * 60) # 60 seconds of silence at 24kHz (2 bytes per sample)
+
+            subprocess.run([
+                'ffmpeg', '-y', '-f', 's16le', '-ar', '24000', '-ac', '1',
+                '-i', audio_raw_path, wav_path
+            ], capture_output=True, timeout=60)
                 
             audio_duration = get_video_duration(wav_path)
 
