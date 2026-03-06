@@ -102,7 +102,7 @@ def get_mime_type(filepath):
     return mime_map.get(ext, 'application/octet-stream')
 
 
-def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=None, clip_count=10):
+def analyze_with_gemini(file_path, product_context, mode, video_duration_sec=None, clip_count=10, visual_prompt=None):
     """
     Sends the file (image or video) and marketing context to Gemini 1.5 Flash.
     Forces JSON output with response_schema for reliability.
@@ -133,6 +133,8 @@ REQUIREMENTS:
 - Make it feel natural, not robotic. Use pauses (...) for effect."""
     else:
         # creative
+        visual_context = f"SPECIFIC VISUAL SCENE PREFERENCE: {visual_prompt}" if visual_prompt else "Describe a dynamic, human-centric scene (e.g., a male/female reviewer interacting, unboxing, showing excitement)."
+        
         prompt = f"""You are a professional UGC video marketing expert for the German market.
 
 Analyze this product image and the marketing info below.
@@ -143,7 +145,7 @@ PRODUCT CONTEXT:
 
 REQUIREMENTS:
 1. Return ONLY a valid JSON object with EXACTLY three fields.
-  1) "video_prompt" - a cinematic 8-second UGC video description in English for Google Veo 3. Describe a dynamic, human-centric scene (e.g., a male/female reviewer interacting, unboxing, showing excitement). NO talking heads, but DO show the person's face, outfit, and actions reacting to the product in a modern setting.
+  1) "video_prompt" - a cinematic 8-second UGC video description in English for Google Veo 3. {visual_context} NO talking heads, but DO show the person's face, outfit, and actions reacting to the product in a modern setting.
   2) "voiceover_script" - an enthusiastic, powerful HOOK ENTIRELY IN GERMAN. It must catch the buyer's attention INSTANTLY! Length: strictly 5 to 6 seconds when spoken at normal pace (so it finishes smoothly before the 8-second video ends and never cuts off).
   3) "sfx_list" - array of 1-3 background sound effect names that BEST match the visual scene. Choose ONLY from this list: unboxing, drone, click, whoosh, crowd, kitchen. Use "none" if no sound fits.
 - voiceover_script MUST be extremely short, punchy, and informal ("du"-style). Max 6 seconds!"""
@@ -571,6 +573,7 @@ def index():
 def analyze():
     """Step 1: Upload file + context, get Gemini creative concept."""
     product_context = request.form.get('product_context', '').strip()
+    visual_prompt = request.form.get('visual_prompt', '').strip()
     mode = request.form.get('mode', '').strip()  # Mode must come from frontend!
     aspect_ratio = request.form.get('aspect_ratio', 'vertical').strip()
     video_url = request.form.get('video_url', '').strip()
@@ -618,7 +621,7 @@ def analyze():
         video_duration_sec = get_video_duration(save_path)
 
     try:
-        creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec, clip_count)
+        creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec, clip_count, visual_prompt)
     except Exception as e:
         if not selected_video:
             try: os.remove(save_path)
@@ -667,7 +670,7 @@ def generate():
 
     mode = job['mode']
     creative_data = job['creative_data']
-    video_prompt = creative_data.get('video_prompt', '')
+    video_prompt = data.get('video_prompt') or creative_data.get('video_prompt', '')
     file_path = job['file_path']
 
     jobs[job_id]['status'] = 'starting'
@@ -733,4 +736,4 @@ def upload_to_library():
     return jsonify({'success': True, 'filename': filename})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)

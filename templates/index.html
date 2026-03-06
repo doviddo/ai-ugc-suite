@@ -466,17 +466,7 @@
         <button class="mode-tab" onclick="setMode('dubbing')" id="tab-dubbing">🎬 Video → German Dub</button>
       </div>
 
-      <div class="card" id="libraryCard">
-        <label>Select Video from Server Library</label>
-        <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
-          <select id="videoLibrarySelect" style="flex:1;">
-            <option value="">-- Upload a new video below or select from library --</option>
-          </select>
-          <button class="btn"
-            style="padding:0.5rem 1rem; border:1px solid var(--border); background:var(--surface2); width:auto;"
-            onclick="loadLibrary()" title="Refresh Library" type="button">🔄</button>
-        </div>
-      </div>
+      <!-- Library section removed per user request -->
 
       <div class="card" id="uploadCard">
         <label>Or Upload New File / Paste Link</label>
@@ -495,9 +485,9 @@
       </div>
 
       <div class="card">
-        <label>Product Context & Marketing Info (Optional)</label>
-        <textarea id="productContext" rows="3"
-          placeholder="Optional: Tell AI what to focus on (e.g., 'Focus on the durability. Target audience: Athletes.')"></textarea>
+        <label>Video Scene Description & Context</label>
+        <textarea id="productContext" rows="4"
+          placeholder="Describe the scene or product (e.g., 'Young professional man outside a coffee shop in Germany, looking frustrated...')"></textarea>
       </div>
 
       <div class="card">
@@ -563,8 +553,10 @@
       </div>
 
       <div class="card hidden" id="videPromptCard">
-        <label>🎬 Video Generation Prompt (Veo 3)</label>
-        <div class="script-box" style="color:var(--muted); font-size:0.875rem;" id="videoPromptPreview"></div>
+        <label>🎬 Video Generation Prompt (Veo 3 - Editable)</label>
+        <div class="script-box">
+          <textarea id="videoPromptEditor" rows="4" placeholder="AI video prompt..."></textarea>
+        </div>
       </div>
 
       <button class="btn btn-success" onclick="generate()">
@@ -664,12 +656,10 @@
       if (mode === 'creative') {
         dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
         document.getElementById('urlInputContainer').classList.add('hidden');
-        document.getElementById('libraryCard').classList.add('hidden');
         document.getElementById('clipCountContainer').classList.add('hidden');
       } else {
         dropText.textContent = 'Drop your video here (MP4, MOV, AVI, WEBM)';
         document.getElementById('urlInputContainer').classList.remove('hidden');
-        document.getElementById('libraryCard').classList.remove('hidden');
 
         if (mode === 'clipper') {
           document.getElementById('clipCountContainer').classList.remove('hidden');
@@ -713,18 +703,11 @@
     });
 
     async function analyze() {
-      const fileInput = document.getElementById('fileInput');
-      const videoUrlInput = document.getElementById('videoUrlInput');
-      const context = document.getElementById('productContext').value.trim();
-      const videoLibrarySelect = document.getElementById('videoLibrarySelect');
-      const selectedLibVideo = videoLibrarySelect ? videoLibrarySelect.value : '';
-
-      const hasLibVideo = selectedLibVideo !== '';
       const hasFile = fileInput.files && fileInput.files.length > 0;
       const hasUrl = videoUrlInput && videoUrlInput.value.trim() !== '';
 
       if (currentMode === 'creative' && !hasFile) { alert('Please upload a photo first.'); return; }
-      if (currentMode !== 'creative' && !hasFile && !hasUrl && !hasLibVideo) { alert('Please upload a file, paste a link, or select from library.'); return; }
+      if (currentMode !== 'creative' && !hasFile && !hasUrl) { alert('Please upload a file or paste a link.'); return; }
 
       document.getElementById('analyzeBtn').disabled = true;
       document.getElementById('analyzeStatus').classList.remove('hidden');
@@ -732,11 +715,14 @@
       document.getElementById('analyzeStatusText').textContent = 'Analyzing with Gemini AI...';
 
       const formData = new FormData();
+      const context = document.getElementById('productContext').value.trim();
+
       if (fileInput.files.length > 0) {
         formData.append('file', fileInput.files[0]);
       }
       formData.append('video_url', videoUrlInput.value.trim());
       formData.append('product_context', context);
+      formData.append('visual_prompt', context); // Use SAME field for visual prompt
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
       if (currentMode === 'clipper') {
@@ -780,7 +766,7 @@
           badge.textContent = '📸 Mode: Full AI Generation (Photo → Veo 3 → TTS)';
           badge.className = 'mode-badge creative';
           document.getElementById('videPromptCard').classList.remove('hidden');
-          document.getElementById('videoPromptPreview').textContent = data.creative_data.video_prompt || '';
+          document.getElementById('videoPromptEditor').value = data.creative_data.video_prompt || '';
           // Show SFX block for creative/dubbing mode
           renderSfxChips(data.creative_data.sfx_list || []);
           document.getElementById('sfxCard').style.display = 'block';
@@ -858,6 +844,8 @@
       const sfx_list = Array.from(activeSfx);
       if (!script && currentMode !== 'clipper') { alert('Script cannot be empty.'); return; }
 
+      const video_prompt = document.getElementById('videoPromptEditor').value.trim();
+
       showPanel('result');
       setStep(3);
 
@@ -865,7 +853,13 @@
         const resp = await fetch('/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ job_id: currentJobId, voiceover_script: script, voice, sfx_list })
+          body: JSON.stringify({
+            job_id: currentJobId,
+            voiceover_script: script,
+            video_prompt: video_prompt,
+            voice,
+            sfx_list
+          })
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Failed to start generation');
