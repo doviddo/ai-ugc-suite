@@ -490,6 +490,12 @@
           placeholder="Describe the scene or product (e.g., 'Young professional man outside a coffee shop in Germany, looking frustrated...')"></textarea>
       </div>
 
+      <div class="card" id="customVoiceoverCard">
+        <label>Custom Voiceover Text (Optional)</label>
+        <textarea id="customVoiceover" rows="3"
+          placeholder="If you want to use your exact text instead of AI generation, paste it here..."></textarea>
+      </div>
+
       <div class="card">
         <label>Voice</label>
         <select id="voiceSelect">
@@ -716,6 +722,7 @@
 
       const formData = new FormData();
       const context = document.getElementById('productContext').value.trim();
+      const customVoiceover = document.getElementById('customVoiceover').value.trim();
 
       if (fileInput.files.length > 0) {
         formData.append('file', fileInput.files[0]);
@@ -723,6 +730,7 @@
       formData.append('video_url', videoUrlInput.value.trim());
       formData.append('product_context', context);
       formData.append('visual_prompt', context); // Use SAME field for visual prompt
+      formData.append('custom_voiceover', customVoiceover);
       formData.append('mode', currentMode);
       formData.append('aspect_ratio', document.getElementById('aspectRatioSelect').value);
       if (currentMode === 'clipper') {

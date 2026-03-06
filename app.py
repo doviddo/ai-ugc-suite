@@ -574,6 +574,7 @@ def analyze():
     """Step 1: Upload file + context, get Gemini creative concept."""
     product_context = request.form.get('product_context', '').strip()
     visual_prompt = request.form.get('visual_prompt', '').strip()
+    custom_voiceover = request.form.get('custom_voiceover', '').strip()
     mode = request.form.get('mode', '').strip()  # Mode must come from frontend!
     aspect_ratio = request.form.get('aspect_ratio', 'vertical').strip()
     video_url = request.form.get('video_url', '').strip()
@@ -622,6 +623,8 @@ def analyze():
 
     try:
         creative_data = analyze_with_gemini(save_path, product_context, mode, video_duration_sec, clip_count, visual_prompt)
+        if custom_voiceover:
+            creative_data['voiceover_script'] = custom_voiceover
     except Exception as e:
         if not selected_video:
             try: os.remove(save_path)
