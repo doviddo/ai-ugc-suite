@@ -445,17 +445,12 @@
     <div class="steps">
       <div class="step active" id="step1">
         <div class="dot">1</div>
-        <span>Upload & Analyze</span>
+        <span>Upload & Prompt</span>
       </div>
       <div class="step-line"></div>
       <div class="step" id="step2">
         <div class="dot">2</div>
-        <span>Review Script</span>
-      </div>
-      <div class="step-line"></div>
-      <div class="step" id="step3">
-        <div class="dot">3</div>
-        <span>Generate</span>
+        <span>Processing & Result</span>
       </div>
     </div>
 
@@ -523,7 +518,7 @@
       </div>
 
       <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
-        <span>🔍 Analyze & Generate Script</span>
+        <span>✨ Generate Video</span>
       </button>
 
       <div class="status-msg info hidden" id="analyzeStatus" style="margin-top:1rem;">
@@ -535,44 +530,7 @@
       </div>
     </div>
 
-    <!-- STEP 2: Review Script -->
-    <div id="panel-review" class="hidden">
-      <div class="card">
-        <div class="mode-badge" id="modeBadge"></div>
-        <label>📝 German Voiceover Script (Editable)</label>
-        <div class="script-box">
-          <div class="lang-badge">🇩🇪 DEUTSCH</div>
-          <textarea id="voiceoverEditor" rows="6" placeholder="German voiceover script..."></textarea>
-        </div>
-      </div>
 
-      <!-- SFX Selection (shown only for creative/dubbing) -->
-      <div class="card" id="sfxCard" style="display:none;">
-        <label>🎵 Background Sound Effects (AI Suggested)</label>
-        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">AI picked these sounds based on your product.
-          Toggle on/off or add more.</p>
-        <div id="sfxChips" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;"></div>
-        <div style="font-size:0.75rem;color:var(--muted);">
-          Available:
-          <span id="sfxAvailable" style="font-style:italic;"></span>
-        </div>
-      </div>
-
-      <div class="card hidden" id="videPromptCard">
-        <label>🎬 Video Generation Prompt (Veo 3 - Editable)</label>
-        <div class="script-box">
-          <textarea id="videoPromptEditor" rows="4" placeholder="AI video prompt..."></textarea>
-        </div>
-      </div>
-
-      <button class="btn btn-success" onclick="generate()">
-        ✨ Confirm &amp; Generate Video
-      </button>
-      <button class="btn" style="background:var(--surface2);color:var(--muted);width:100%;margin-top:0.75rem;"
-        onclick="goBack()">
-        ← Back
-      </button>
-    </div>
 
     <!-- STEP 3: Progress / Result -->
     <div id="panel-result" class="hidden">
@@ -752,47 +710,30 @@
         currentJobId = data.job_id;
         currentMode = data.mode;
 
-        // Populate review panel
-        if (data.mode === 'clipper') {
-          let previewText = "✅ ИИ сгенерировал сценарий для вашего видео:\n\n";
-          if (data.creative_data.clips) {
-            data.creative_data.clips.forEach((c, i) => {
-              previewText += `${c.theme ? 'О чём: ' + c.theme + '\n' : ''}${c.voiceover_script}\n\n`;
-            });
-          } else {
-            previewText += "[Сценарий готов, нажмите Generate]";
-          }
-          document.getElementById('voiceoverEditor').value = previewText;
-          document.getElementById('voiceoverEditor').readOnly = false; // Now editable for 1 clip
-        } else {
-          document.getElementById('voiceoverEditor').value = data.creative_data.voiceover_script || '';
-          document.getElementById('voiceoverEditor').readOnly = false;
-        }
-
-        const badge = document.getElementById('modeBadge');
-        if (data.mode === 'creative') {
-          badge.textContent = '📸 Mode: Full AI Generation (Photo → Veo 3 → TTS)';
-          badge.className = 'mode-badge creative';
-          document.getElementById('videPromptCard').classList.remove('hidden');
-          document.getElementById('videoPromptEditor').value = data.creative_data.video_prompt || '';
-          // Show SFX block for creative/dubbing mode
-          renderSfxChips(data.creative_data.sfx_list || []);
-          document.getElementById('sfxCard').style.display = 'block';
-        } else if (data.mode === 'dubbing') {
-          badge.textContent = '🎬 Mode: Smart Dubbing (Video → TTS)';
-          badge.className = 'mode-badge dubbing';
-          document.getElementById('videPromptCard').classList.add('hidden');
-          renderSfxChips([]);
-          document.getElementById('sfxCard').style.display = 'block';
-        } else {
-          badge.textContent = '✂️ Mode: Smart Clipper (Extracting Highlights)';
-          badge.className = 'mode-badge dubbing';
-          document.getElementById('videPromptCard').classList.add('hidden');
-          document.getElementById('sfxCard').style.display = 'none';
-        }
-
-        showPanel('review');
+        // Automatically start generation bypassing step 2
+        showPanel('result');
         setStep(2);
+
+        const script = data.creative_data.voiceover_script || '';
+        const video_prompt = data.creative_data.video_prompt || '';
+        const voice = document.getElementById('voiceSelect').value;
+        const sfx_list = (data.creative_data.sfx_list || []).filter(s => s && s !== 'none');
+
+        const generateResp = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_id: currentJobId,
+            voiceover_script: script,
+            video_prompt: video_prompt,
+            voice: voice,
+            sfx_list: sfx_list
+          })
+        });
+        const genData = await generateResp.json();
+        if (!generateResp.ok) throw new Error(genData.error || 'Failed to start generation');
+
+        pollInterval = setInterval(pollStatus, 4000);
 
       } catch (err) {
         document.getElementById('analyzeError').classList.remove('hidden');
@@ -803,80 +744,7 @@
       }
     }
 
-    const SFX_ALL = {
-      unboxing: '📦 Unboxing',
-      drone: '🚁 Drone',
-      click: '🖱️ Click',
-      whoosh: '💨 Whoosh',
-      crowd: '👏 Crowd',
-      kitchen: '🍳 Kitchen'
-    };
-    let activeSfx = new Set();
 
-    function renderSfxChips(suggested) {
-      activeSfx = new Set(suggested.filter(s => s && s !== 'none'));
-      const chips = document.getElementById('sfxChips');
-      chips.innerHTML = '';
-      const available = Object.entries(SFX_ALL);
-      available.forEach(([key, label]) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.sfx = key;
-        btn.style.cssText = `padding:0.4rem 0.9rem;border-radius:99px;border:1px solid;font-size:0.8rem;cursor:pointer;transition:all 0.2s;font-family:inherit;`;
-        updateChipStyle(btn, activeSfx.has(key));
-        btn.textContent = label;
-        btn.onclick = () => {
-          if (activeSfx.has(key)) activeSfx.delete(key); else activeSfx.add(key);
-          updateChipStyle(btn, activeSfx.has(key));
-        };
-        chips.appendChild(btn);
-      });
-      document.getElementById('sfxAvailable').textContent = Object.values(SFX_ALL).join(', ');
-    }
-
-    function updateChipStyle(btn, active) {
-      if (active) {
-        btn.style.background = 'rgba(124,106,247,0.2)';
-        btn.style.borderColor = 'var(--accent)';
-        btn.style.color = 'var(--accent)';
-      } else {
-        btn.style.background = 'var(--surface2)';
-        btn.style.borderColor = 'var(--border)';
-        btn.style.color = 'var(--muted)';
-      }
-    }
-
-    async function generate() {
-      const script = document.getElementById('voiceoverEditor').value.trim();
-      const voice = document.getElementById('voiceSelect').value;
-      const sfx_list = Array.from(activeSfx);
-      if (!script && currentMode !== 'clipper') { alert('Script cannot be empty.'); return; }
-
-      const video_prompt = document.getElementById('videoPromptEditor').value.trim();
-
-      showPanel('result');
-      setStep(3);
-
-      try {
-        const resp = await fetch('/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            job_id: currentJobId,
-            voiceover_script: script,
-            video_prompt: video_prompt,
-            voice,
-            sfx_list
-          })
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || 'Failed to start generation');
-
-        pollInterval = setInterval(pollStatus, 4000);
-      } catch (err) {
-        showResultError(err.message);
-      }
-    }
 
     async function pollStatus() {
       if (!currentJobId) return;
@@ -986,7 +854,7 @@
         container.appendChild(wrapper);
       });
 
-      setStep(3, true);
+      setStep(2, true);
     }
 
     function showResultError(msg) {
@@ -997,14 +865,16 @@
     }
 
     function showPanel(name) {
-      ['upload', 'review', 'result'].forEach(p => {
-        document.getElementById(`panel-${p}`).classList.toggle('hidden', p !== name);
+      ['upload', 'result'].forEach(p => {
+        const el = document.getElementById(`panel-${p}`);
+        if (el) el.classList.toggle('hidden', p !== name);
       });
     }
 
     function setStep(active, isDone = false) {
-      [1, 2, 3].forEach(i => {
+      [1, 2].forEach(i => {
         const el = document.getElementById(`step${i}`);
+        if (!el) return;
         el.classList.remove('active', 'done');
         if (i < active) el.classList.add('done');
         else if (i === active) el.classList.add(isDone ? 'done' : 'active');
