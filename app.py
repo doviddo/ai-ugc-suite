@@ -464,20 +464,10 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
     try:
         if mode != 'clipper':
             jobs[job_id]['status'] = 'generating_audio'
-            # 1. Skip TTS, generate a short silent audio instead
+            audio_data = generate_tts(voiceover_script, voice)
             audio_raw_path = f"temp/{job_id}_audio.raw"
-            wav_path = audio_raw_path.replace('.raw', '.wav')
-            
-            # just write a dummy raw file
             with open(audio_raw_path, 'wb') as f:
-                f.write(b'\x00' * 48000 * 60) # 60 seconds of silence at 24kHz (2 bytes per sample)
-
-            subprocess.run([
-                'ffmpeg', '-y', '-f', 's16le', '-ar', '24000', '-ac', '1',
-                '-i', audio_raw_path, wav_path
-            ], capture_output=True, timeout=60)
-                
-            audio_duration = get_video_duration(wav_path)
+                f.write(audio_data)
 
         # ── Mode-specific video pipeline ──
         if mode == 'creative':
