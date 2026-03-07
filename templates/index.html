@@ -481,8 +481,7 @@
           <div class="icon" id="dropIcon">📁</div>
           <p id="dropText">Drop your photo or video here, or click to browse</p>
           <div class="file-info hidden" id="fileInfo"></div>
-          <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.avi,.webm"
-            onchange="onFileSelect(this)" />
+          <input type="file" id="fileInput" onchange="onFileSelect(this)" />
         </div>
       </div>
 
@@ -617,7 +616,8 @@
       const dropText = document.getElementById('dropText');
       const dropIcon = document.getElementById('dropIcon');
 
-      if (fileInput) fileInput.accept = mode === 'creative' ? '.jpg,.jpeg,.png,.webp' : '.mp4,.mov,.avi,.webm';
+      // No longer using .accept to avoid OS-level explorer lags
+      if (fileInput) fileInput.removeAttribute('accept');
 
       if (mode === 'creative') {
         if (dropText) dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
