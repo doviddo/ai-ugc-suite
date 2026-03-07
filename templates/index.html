@@ -697,8 +697,8 @@
           formData.append('clip_count', clipCountInput.value);
         }
       }
-      if (selectedLibVideo) {
-        formData.append('selected_video', selectedLibVideo);
+      if (window.selectedLibVideo) {
+        formData.append('selected_video', window.selectedLibVideo);
       }
 
       try {
