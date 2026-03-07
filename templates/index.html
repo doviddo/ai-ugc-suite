@@ -139,6 +139,12 @@
       height: 100%;
     }
 
+    .drop-zone .icon,
+    .drop-zone p,
+    .drop-zone .file-info {
+      pointer-events: none;
+    }
+
     .drop-zone .icon {
       font-size: 2.5rem;
       margin-bottom: 0.75rem;
@@ -472,10 +478,10 @@
         </div>
 
         <div class="drop-zone" id="dropZone">
-          <input type="file" id="fileInput" accept="image/*,video/*" onchange="onFileSelect(this)" />
           <div class="icon" id="dropIcon">📁</div>
           <p id="dropText">Drop your photo or video here, or click to browse</p>
           <div class="file-info hidden" id="fileInfo"></div>
+          <input type="file" id="fileInput" accept="image/*,video/*" onchange="onFileSelect(this)" />
         </div>
       </div>
 
@@ -588,51 +594,51 @@
       }
     };
 
-    async function loadLibrary() {
-      try {
-        const resp = await fetch('/api/library');
-        const files = await resp.json();
-        const sel = document.getElementById('videoLibrarySelect');
-        const currentVal = sel.value;
-        sel.innerHTML = '<option value="">-- Upload a new video below or select from library --</option>';
-        files.forEach(f => {
-          const opt = document.createElement('option');
-          opt.value = f;
-          opt.textContent = f;
-          sel.appendChild(opt);
-        });
-        if (files.includes(currentVal)) {
-          sel.value = currentVal;
-        }
-      } catch (e) { }
+    function initializeUI() {
+      // Ensure the UI is properly synced with the default mode
+      setMode(currentMode);
     }
 
-    // Call loadLibrary on startup
-    document.addEventListener('DOMContentLoaded', loadLibrary);
+    document.addEventListener('DOMContentLoaded', initializeUI);
 
     function setMode(mode) {
       currentMode = mode;
-      document.getElementById('tab-creative').classList.toggle('active', mode === 'creative');
-      document.getElementById('tab-dubbing').classList.toggle('active', mode === 'dubbing');
-      document.getElementById('tab-clipper').classList.toggle('active', mode === 'clipper');
 
-      document.getElementById('fileInput').accept = mode === 'creative' ? 'image/*' : 'video/*';
+      const tabCreative = document.getElementById('tab-creative');
+      const tabDubbing = document.getElementById('tab-dubbing');
+      const tabClipper = document.getElementById('tab-clipper');
+
+      if (tabCreative) tabCreative.classList.toggle('active', mode === 'creative');
+      if (tabDubbing) tabDubbing.classList.toggle('active', mode === 'dubbing');
+      if (tabClipper) tabClipper.classList.toggle('active', mode === 'clipper');
+
+      const fileInput = document.getElementById('fileInput');
+      const dropText = document.getElementById('dropText');
+      const dropIcon = document.getElementById('dropIcon');
+
+      if (fileInput) fileInput.accept = mode === 'creative' ? 'image/*' : 'video/*';
+
       if (mode === 'creative') {
-        dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
-        document.getElementById('urlInputContainer').classList.add('hidden');
-        document.getElementById('clipCountContainer').classList.add('hidden');
+        if (dropText) dropText.textContent = 'Drop your product photo here (JPG, PNG, WEBP)';
+        const urlInput = document.getElementById('urlInputContainer');
+        if (urlInput) urlInput.classList.add('hidden');
+        const clipCount = document.getElementById('clipCountContainer');
+        if (clipCount) clipCount.classList.add('hidden');
       } else {
-        dropText.textContent = 'Drop your video here (MP4, MOV, AVI, WEBM)';
-        document.getElementById('urlInputContainer').classList.remove('hidden');
+        if (dropText) dropText.textContent = 'Drop your video here (MP4, MOV, AVI, WEBM)';
+        const urlInput = document.getElementById('urlInputContainer');
+        if (urlInput) urlInput.classList.remove('hidden');
 
         if (mode === 'clipper') {
-          document.getElementById('clipCountContainer').classList.remove('hidden');
+          const clipCount = document.getElementById('clipCountContainer');
+          if (clipCount) clipCount.classList.remove('hidden');
         } else {
-          document.getElementById('clipCountContainer').classList.add('hidden');
+          const clipCount = document.getElementById('clipCountContainer');
+          if (clipCount) clipCount.classList.add('hidden');
         }
       }
 
-      document.getElementById('dropIcon').textContent = mode === 'creative' ? '📸' : '🎬';
+      if (dropIcon) dropIcon.textContent = mode === 'creative' ? '📸' : '🎬';
       clearFileInput();
     }
 
@@ -667,7 +673,10 @@
     });
 
     async function analyze() {
-      const hasFile = fileInput.files && fileInput.files.length > 0;
+      const fileInput = document.getElementById('fileInput');
+      const videoUrlInput = document.getElementById('videoUrlInput');
+
+      const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
       const hasUrl = videoUrlInput && videoUrlInput.value.trim() !== '';
 
       if (currentMode === 'creative' && !hasFile) { alert('Please upload a photo first.'); return; }
