@@ -491,10 +491,10 @@
         <div class="drop-zone" id="dropZone">
           <div class="icon" id="dropIcon">📁</div>
           <p id="dropText">Drop your photo or video here</p>
-          <button type="button" class="btn-browse" onclick="document.getElementById('fileInput').click()">Or click to
-            browse</button>
+          <label for="fileInput" class="btn-browse" style="display:inline-block; margin-top: 1rem; cursor: pointer;">Or
+            click to browse</label>
           <div class="file-info hidden" id="fileInfo"></div>
-          <input type="file" id="fileInput" onchange="onFileSelect(this)" />
+          <input type="file" id="fileInput" onchange="onFileSelect(this)" style="display: none;" />
         </div>
       </div>
 
@@ -629,7 +629,7 @@
       const dropText = document.getElementById('dropText');
       const dropIcon = document.getElementById('dropIcon');
 
-      // No longer using .accept to avoid OS-level explorer lags
+      // COMPLETELY removing 'accept' attribute as it often causes 10s-30s lags on Windows
       if (fileInput) fileInput.removeAttribute('accept');
 
       if (mode === 'creative') {

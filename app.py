@@ -40,15 +40,6 @@ os.makedirs('assets', exist_ok=True)
 os.makedirs('assets/sfx', exist_ok=True)
 
 BG_MUSIC_PATH = 'assets/bg_music.mp3'
-if not os.path.exists(BG_MUSIC_PATH):
-    print("Downloading default background music...")
-    try:
-        # A reliable public domain test track, can be replaced by user later
-        resp = requests.get("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", timeout=60)
-        with open(BG_MUSIC_PATH, 'wb') as f:
-            f.write(resp.content)
-    except Exception as e:
-        print(f"Failed to download bg music: {e}")
 
 # SFX library: key -> (emoji label, filename)
 SFX_LIBRARY = {
@@ -395,13 +386,11 @@ def merge_audio_video(video_path, audio_raw_path, output_path, video_duration, a
                 if os.path.exists(sfx_path):
                     valid_sfx_paths.append(sfx_path)
 
-    # Add Background Music (always mixed at 10% volume)
+    # Background music disabled
     bg_music_args = []
-    has_bg_music = os.path.exists(BG_MUSIC_PATH)
-    if has_bg_music:
-        bg_music_args = ['-stream_loop', '-1', '-i', BG_MUSIC_PATH]
+    has_bg_music = False
 
-    # Build FFmpeg command with optional SFX mixing and BG Music
+    # Build FFmpeg command with optional SFX mixing
     cmd = ['ffmpeg', '-y', '-i', video_path, '-i', wav_path] + bg_music_args
     for sfx_path in valid_sfx_paths:
         cmd += ['-stream_loop', '-1', '-i', sfx_path]
