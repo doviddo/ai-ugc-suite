@@ -871,6 +871,24 @@
 
         wrapper.appendChild(video);
         wrapper.appendChild(dlink);
+
+        if (data.output_raw_veo3) {
+          const rawUrl = `/download/${data.output_raw_veo3}`;
+          const dlinkRaw = document.createElement('a');
+          dlinkRaw.href = rawUrl;
+          dlinkRaw.download = data.output_raw_veo3;
+          dlinkRaw.className = "btn";
+          dlinkRaw.style.background = "var(--surface)";
+          dlinkRaw.style.border = "1px solid var(--border)";
+          dlinkRaw.style.color = "var(--text)";
+          dlinkRaw.style.textDecoration = "none";
+          dlinkRaw.style.width = "100%";
+          dlinkRaw.style.marginTop = "0.5rem";
+          dlinkRaw.style.marginBottom = "0.5rem";
+          dlinkRaw.innerHTML = "🎥 Download Raw Veo 3 Video (No Audio)";
+          wrapper.appendChild(dlinkRaw);
+        }
+
         wrapper.appendChild(titleCov);
         wrapper.appendChild(img);
         wrapper.appendChild(dlinkImg);

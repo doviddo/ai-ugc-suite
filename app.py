@@ -295,8 +295,8 @@ def generate_veo3_video(video_prompt, aspect_ratio='vertical'):
     """Submit video generation to Veo 3 and poll until complete."""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/veo-3.0-generate-001:predictLongRunning?key={VEO_API_KEY}"
 
-    # Map our internal name to Veo 3 API aspect ratio values
-    veo_aspect = {'vertical': '9:16', 'horizontal': '16:9', 'fb_feed': '4:5'}.get(aspect_ratio, '9:16')
+    # Force 9:16 aspect ratio as requested
+    veo_aspect = '9:16'
 
     body = {"instances": [{"prompt": video_prompt}], "parameters": {"aspectRatio": veo_aspect}}
     response = requests.post(url, json=body, timeout=60)
@@ -474,6 +474,13 @@ def process_job(job_id, mode, file_path, product_context, voiceover_script=None,
             jobs[job_id]['status'] = 'generating_video'
             aspect_ratio = jobs[job_id].get('aspect_ratio', 'vertical')
             video_data = generate_veo3_video(video_prompt, aspect_ratio)
+            
+            # Save raw veo3 output for the user
+            raw_video_path = f"output/{job_id}_raw_veo3.mp4"
+            with open(raw_video_path, 'wb') as f:
+                f.write(video_data)
+            jobs[job_id]['output_raw_veo3'] = f"{job_id}_raw_veo3.mp4"
+
             video_path = f"temp/{job_id}_video.mp4"
             with open(video_path, 'wb') as f:
                 f.write(video_data)
@@ -664,6 +671,7 @@ def status(job_id):
         response['output_file'] = job.get('output_file')
         response['output_files'] = job.get('output_files')
         response['output_cover'] = job.get('output_cover')
+        response['output_raw_veo3'] = job.get('output_raw_veo3')
         response['creative_data'] = job.get('creative_data')
 
     return jsonify(response)
